@@ -45,7 +45,7 @@ from carla.settings   import CarlaSettings
 from carla.tcp        import TCPConnectionError
 from carla.controller import utils
 from csv import writer
-
+from decimal import *
 """
 Configurable params
 """
@@ -126,6 +126,7 @@ INTERP_DISTANCE_RES       = 0.01 # distance between interpolated points
 # controller output directory
 CONTROLLER_OUTPUT_FOLDER = os.path.dirname(os.path.realpath(__file__)) +\
                            '/controller_output/'
+getcontext().prec = 2
 
 def make_carla_settings(args):
     """Make a CarlaSettings object with the settings we need.
@@ -308,7 +309,6 @@ def write_collisioncount_file(collided_list):
 def exec_waypoint_nav_demo(args):
     """ Executes waypoint navigation demo.
     """
-
     with make_carla_client(args.host, args.port) as client:
         print('Carla client connected.')
 
@@ -657,8 +657,47 @@ def exec_waypoint_nav_demo(args):
         prev_collision_vehicles    = 0
         prev_collision_pedestrians = 0
         prev_collision_other       = 0
-
+        
         for frame in range(TOTAL_EPISODE_FRAMES):
+            parkedcar_data = None
+            parkedcar_box_pts = []      # [x,y]
+            with open('parked_vehicle_params.txt', 'r') as parkedcar_file:
+                next(parkedcar_file)  # skip header
+                parkedcar_reader = csv.reader(parkedcar_file, 
+                                          delimiter=',', 
+                                          quoting=csv.QUOTE_NONNUMERIC)
+                parkedcar_data = list(parkedcar_reader)
+                # convert to rad
+                ct=0
+                for rows in parkedcar_data:
+                    ct+=1
+                #for i in range(len(parkedcar_data)):
+                for i in range(ct):
+                    parkedcar_data[i][3] = parkedcar_data[i][3] * np.pi / 180.0 
+                    # obtain parked car(s) box points for LP
+
+                #for i in range(len(parkedcar_data)):
+                for i in range(ct):
+                    x = parkedcar_data[i][0]
+                    y = parkedcar_data[i][1]
+                    z = parkedcar_data[i][2]
+                    yaw = parkedcar_data[i][3]
+                    xrad = parkedcar_data[i][4]
+                    yrad = parkedcar_data[i][5]
+                    zrad = parkedcar_data[i][6]
+                    cpos = np.array([
+                            [-xrad, -xrad, -xrad, 0,    xrad, xrad, xrad,  0    ],
+                            [-yrad, 0,     yrad,  yrad, yrad, 0,    -yrad, -yrad]])
+                    rotyaw = np.array([
+                            [np.cos(yaw), np.sin(yaw)],
+                            [-np.sin(yaw), np.cos(yaw)]])
+                    cpos_shift = np.array([
+                            [x, x, x, x, x, x, x, x],
+                            [y, y, y, y, y, y, y, y]])
+                    cpos = np.add(np.matmul(rotyaw, cpos), cpos_shift)
+                    for j in range(cpos.shape[1]):
+                        parkedcar_box_pts.append([cpos[0,j], cpos[1,j]])
+
             # Gather current data from the CARLA server
             measurement_data, sensor_data = client.read_data()
 
@@ -751,11 +790,15 @@ def exec_waypoint_nav_demo(args):
 
                 # Check to see if we need to follow the lead vehicle.
                 bp.check_for_lead_vehicle(ego_state, lead_car_pos[1], lead_car_speed[1])
-                if  bp.check_for_lead_vehicle(ego_state, lead_car_pos[1], lead_car_speed[1]) == False: 
-                    with open('course4_test_waypoints.txt', 'a', newline='') as f_object:
-                        writer_object = writer(f_object)
-                        writer_object.writerow([str(lead_car_pos[1][0]+5),str(lead_car_pos[1][1]+5),'38.1','180','2.5','0.9708','0.789'])
-                        f_object.close()
+                dir_path ='C:\\Users\\User\\Desktop\\Motion-Planning\\CarlaSimulator\\PythonClient\\MotionPlannerCourse4FinalProject'
+                os.chdir(dir_path)
+                with open('parked_vehicle_params.txt', 'a', newline='') as f_object:
+                    writer_object = writer(f_object)
+                    x_pos = int(lead_car_pos[1][0]+5)
+                    y_pos = int(lead_car_pos[1][1])
+                    #writer_object.writerow([Decimal(lead_car_pos[1][0]+5),Decimal(lead_car_pos[1][1]),'38.1','180','2.5','0.9708','0.789'])
+                    writer_object.writerow([x_pos,y_pos,'38.1','180','2.5','0.9708','0.789'])
+                f_object.close()
                 # Compute the goal state set from the behavioural planner's computed goal state.
                 goal_state_set = lp.get_goal_state_set(bp._goal_index, bp._goal_state, waypoints, ego_state)
 
