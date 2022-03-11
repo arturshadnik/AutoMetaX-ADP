@@ -421,7 +421,7 @@ class BehaviouralPlanner:
                       ego_heading_vector) < (1 / math.sqrt(2)):
                 return
 
-            self._follow_lead_vehicle = False
+            self._follow_lead_vehicle = True
 
         else:
             lead_car_delta_vector = [lead_car_position[0] - ego_state[0], 
@@ -437,7 +437,6 @@ class BehaviouralPlanner:
             ego_heading_vector = [math.cos(ego_state[2]), math.sin(ego_state[2])]
             if np.dot(lead_car_delta_vector, ego_heading_vector) > (1 / math.sqrt(2)):
                 return
-
             self._follow_lead_vehicle = False
 
 

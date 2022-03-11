@@ -88,7 +88,7 @@ PLOT_BOT           = 0.1
 PLOT_WIDTH         = 0.8
 PLOT_HEIGHT        = 0.8
 
-WAYPOINTS_FILENAME = 'course4_test_waypoints.txt'  # waypoint file to load
+WAYPOINTS_FILENAME = 'course4_test_waypoints_original_speed.txt'  # waypoint file to load
 #WAYPOINTS_FILENAME = 'racetrack_waypoints.txt'
 DIST_THRESHOLD_TO_LAST_WAYPOINT = 2.0  # some distance from last position before
                                        # simulation ends
@@ -784,21 +784,41 @@ def exec_waypoint_nav_demo(args):
 
                 # Set lookahead based on current speed.
                 bp.set_lookahead(BP_LOOKAHEAD_BASE + BP_LOOKAHEAD_TIME * open_loop_speed)
+                look_ahead_dist = BP_LOOKAHEAD_BASE + BP_LOOKAHEAD_TIME * open_loop_speed
 
                 # Perform a state transition in the behavioural planner.
                 bp.transition_state(waypoints, ego_state, current_speed)
 
                 # Check to see if we need to follow the lead vehicle.
-                bp.check_for_lead_vehicle(ego_state, lead_car_pos[1], lead_car_speed[1])
-                dir_path ='C:\\Users\\User\\Desktop\\Motion-Planning\\CarlaSimulator\\PythonClient\\MotionPlannerCourse4FinalProject'
-                os.chdir(dir_path)
-                with open('parked_vehicle_params.txt', 'a', newline='') as f_object:
-                    writer_object = writer(f_object)
-                    x_pos = int(lead_car_pos[1][0]+5)
-                    y_pos = int(lead_car_pos[1][1])
-                    #writer_object.writerow([Decimal(lead_car_pos[1][0]+5),Decimal(lead_car_pos[1][1]),'38.1','180','2.5','0.9708','0.789'])
-                    writer_object.writerow([x_pos,y_pos,'38.1','180','2.5','0.9708','0.789'])
-                f_object.close()
+                Follow_state=bp.check_for_lead_vehicle(ego_state, lead_car_pos[1], lead_car_speed[1])
+                lead_car_delta_vector = [lead_car_pos[1][0] - ego_state[0], 
+                                     lead_car_pos[1][1] - ego_state[1]]
+                lead_car_distance = np.linalg.norm(lead_car_delta_vector)
+                #if lead_car_distance < 50:
+                closest_len, closest_index = behavioural_planner.get_closest_index(waypoints, ego_state)
+                goal_index = bp.get_goal_index(waypoints, ego_state, closest_len, closest_index)
+                goal_state = waypoints[goal_index][2]
+                if lead_car_distance < look_ahead_dist-10:
+                    if lead_car_speed[1] < 25:
+                        Follow_state = False
+                        closest_len, closest_index = behavioural_planner.get_closest_index(waypoints, ego_state)
+                        goal_index = bp.get_goal_index(waypoints, ego_state, closest_len, closest_index)
+                        goal_state = waypoints[goal_index][2] * 1.5
+                    else:
+                        Follow_state = True
+                        closest_len, closest_index = behavioural_planner.get_closest_index(waypoints, ego_state)
+                        goal_index = bp.get_goal_index(waypoints, ego_state, closest_len, closest_index)
+                        goal_state = waypoints[goal_index][2]
+                if  Follow_state == False:
+                    dir_path ='C:\\Users\\User\\Desktop\\Motion-Planning\\CarlaSimulator\\PythonClient\\MotionPlannerCourse4FinalProject'
+                    os.chdir(dir_path)
+                    with open('parked_vehicle_params.txt', 'a', newline='') as f_object:
+                        writer_object = writer(f_object)
+                        x_pos = int(lead_car_pos[1][0]-10)
+                        y_pos = int(lead_car_pos[1][1])
+                        #writer_object.writerow([Decimal(lead_car_pos[1][0]+5),Decimal(lead_car_pos[1][1]),'38.1','180','2.5','0.9708','0.789'])
+                        writer_object.writerow([x_pos,y_pos,'38.1','180','2.5','0.9708','0.789'])
+                    f_object.close()
                 # Compute the goal state set from the behavioural planner's computed goal state.
                 goal_state_set = lp.get_goal_state_set(bp._goal_index, bp._goal_state, waypoints, ego_state)
 
@@ -823,10 +843,11 @@ def exec_waypoint_nav_demo(args):
                 # Compute the velocity profile for the path, and compute the waypoints.
                 # Use the lead vehicle to inform the velocity profile's dynamic obstacle handling.
                 # In this scenario, the only dynamic obstacle is the lead vehicle at index 1.
-                desired_speed = bp._goal_state[2]
+                #desired_speed = bp._goal_state[2]
+                desired_speed = goal_state
                 lead_car_state = [lead_car_pos[1][0], lead_car_pos[1][1], lead_car_speed[1]]
                 decelerate_to_stop = bp._state == behavioural_planner.DECELERATE_TO_STOP
-                local_waypoints = lp._velocity_planner.compute_velocity_profile(best_path, desired_speed, ego_state, current_speed, decelerate_to_stop,lead_car_state, bp._follow_lead_vehicle)
+                local_waypoints = lp._velocity_planner.compute_velocity_profile(best_path, desired_speed, ego_state, current_speed, decelerate_to_stop,lead_car_state, Follow_state)
                 #print(local_waypoints[0])
                 # --------------------------------------------------------------
 
