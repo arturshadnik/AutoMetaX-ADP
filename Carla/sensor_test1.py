@@ -30,11 +30,15 @@ from __future__ import print_function
 
 import argparse
 from asyncio import DatagramTransport
+from cProfile import label
+from ctypes import sizeof
 import logging
 import random
 import time
 import cv2 as cv 
 import os
+import open3d as o3d
+import sys
 
 try:
     import pygame
@@ -71,6 +75,7 @@ WINDOW_WIDTH = 1280
 WINDOW_HEIGHT = 720
 MINI_WINDOW_WIDTH = 400
 MINI_WINDOW_HEIGHT = 300
+MAX_DISTANCE = 1000
 
 #function to empty a directory
 def emptydir(top):
@@ -82,14 +87,26 @@ def emptydir(top):
             for name in dirs:
                 os.rmdir(os.path.join(root, name))  
 
-def super_basic_controller(image):
-    roi = image[150, 200]
-    if roi >= 0.5:
-        print("Bright: {}".format(roi))
-    else:
-        print("Dark: {}".format(roi))
+def get_object_roi(image, step, label):
+    roi = np.where(image == label) # 4 = pedestrian, 7 = road, 10 = cars
+    #print(roi)
+    try:
+        box_min_width = np.min(roi[1])
+        box_max_width = np.max(roi[1])
+        box_min_height = np.min(roi[0])
+        box_max_height = np.max(roi[0])
 
-                
+        print("Size of ROI is: {0} x {1}".format(box_max_height-box_min_height, box_max_width-box_min_width))
+        return box_max_height, box_min_height, box_max_width, box_min_width
+
+    except Exception as e:
+        print("Error getting ROI in get_object_roi function: {}".format(e), file = sys.stderr)   
+
+def measure_distance(depth_image, point_x, point_y):
+    print(point_x, point_y)
+    distance = depth_image[point_y, point_x]
+    return distance
+
 def make_carla_settings(args):
     """Make a CarlaSettings object with the settings we need."""
     settings = CarlaSettings()
@@ -107,12 +124,12 @@ def make_carla_settings(args):
     camera0.set_rotation(0.0, 0.0, 0.0)
     settings.add_sensor(camera0)
     camera1 = sensor.Camera('CameraDepth', PostProcessing='Depth')
-    camera1.set_image_size(MINI_WINDOW_WIDTH, MINI_WINDOW_HEIGHT)
+    camera1.set_image_size(WINDOW_WIDTH, WINDOW_HEIGHT)
     camera1.set_position(2.2, 0.0, 0.8)
     camera1.set_rotation(0.0, 0.0, 0.0)
     settings.add_sensor(camera1)
-    camera2 = sensor.Camera('CameraSemSeg', PostProcessing='SemanticSegmentation')
-    camera2.set_image_size(MINI_WINDOW_WIDTH, MINI_WINDOW_HEIGHT)
+    camera2 = sensor.Camera('CameraSemantic', PostProcessing='SemanticSegmentation')
+    camera2.set_image_size(WINDOW_WIDTH, WINDOW_HEIGHT)
     camera2.set_position(2.2, 0.0, 0.8)
     camera2.set_rotation(0.0, 0.0, 0.0)
     settings.add_sensor(camera2)
@@ -121,12 +138,12 @@ def make_carla_settings(args):
         lidar.set_position(0, 0, 2.5)
         lidar.set_rotation(0, 0, 0)
         lidar.set(
-            Channels=32,
+            Channels=32, 
             Range=50,
             PointsPerSecond=100000,
             RotationFrequency=10,
-            UpperFovLimit=10,
-            LowerFovLimit=-30)
+            UpperFovLimit=0,
+            LowerFovLimit=-1)
         settings.add_sensor(lidar)
     return settings
 
@@ -174,7 +191,7 @@ class CarlaGame(object):
 
     def execute(self):
         """Launch the PyGame."""
-        emptydir('D:\ADP\CarlaSimulator-20220211T045029Z-001\CarlaSimulator\PythonClient\estadp\out_image')
+        emptydir('D:\ADP\CarlaSimulator-20220211T045029Z-001\CarlaSimulator\PythonClient\estadp\out_image') # clear output folder each run
         pygame.init()
         self._initialize_game()
         try:
@@ -225,22 +242,84 @@ class CarlaGame(object):
 
         self._main_image = sensor_data.get('CameraRGB', None)
         self._mini_view_image1 = sensor_data.get('CameraDepth', None)
-        self._mini_view_image2 = sensor_data.get('CameraSemSeg', None)
+        self._mini_view_image2 = sensor_data.get('CameraSemantic', None)
         self._lidar_measurement = sensor_data.get('Lidar32', None)
         
-        if self._main_image is not None and self._mini_view_image1 is not None:
+        #Functions relating to camera data and converting it to opencv and numpy data for processing
+        if self._main_image is not None and self._mini_view_image1 is not None and self._mini_view_image2 is not None:
+            label = 4 #object to outline. 4 = pedestrian, 7 = road, 10 = car
+            
             image = image_converter.to_bgra_array(self._main_image)
-            depth_image = image_converter.depth_to_array(self._mini_view_image1)
+            seg_image = image_converter.labels_to_array(self._mini_view_image2)
+            #seg_image = cv.resize(seg_image, (WINDOW_WIDTH,WINDOW_HEIGHT), interpolation=cv.INTER_NEAREST)
+            depth_image = MAX_DISTANCE*(image_converter.depth_to_array(self._mini_view_image1))
+           
             #cv.imwrite('D:\ADP\CarlaSimulator-20220211T045029Z-001\CarlaSimulator\PythonClient\estadp\out_image\image{}.jpg'.format(self._timer.step), image)
+           
             #np.savetxt('D:\ADP\CarlaSimulator-20220211T045029Z-001\CarlaSimulator\PythonClient\estadp\out_image\depth_image{}.csv'.format(self._timer.step), depth_image, delimiter = ',')
             #cv.imwrite('D:\ADP\CarlaSimulator-20220211T045029Z-001\CarlaSimulator\PythonClient\estadp\out_image\depth_image{}.jpg'.format(self._timer.step), depth_image)
+           
+            #np.savetxt('D:\ADP\CarlaSimulator-20220211T045029Z-001\CarlaSimulator\PythonClient\estadp\out_image\segmentation_image{}.csv'.format(self._timer.step), seg_image, delimiter = ',')
+            #cv.imwrite('D:\ADP\CarlaSimulator-20220211T045029Z-001\CarlaSimulator\PythonClient\estadp\out_image\segmentation_image{}.jpg'.format(self._timer.step), seg_image)
+            
             #cv.imshow("Image", image)
             #cv.imshow("Depth Image", depth_image)
-            #super_basic_controller(depth_image)
+            try: #get bounding box around object of interest
+                box_max_height, box_min_height, box_max_width, box_min_width = get_object_roi(seg_image, self._timer.step, label)
+                cv.rectangle(image, (box_min_width, box_min_height),(box_max_width,box_max_height), (0,0,0), 2)
+                #cv.imshow("Image", image)
+            except TypeError as e:
+                print("Error calling get_object_roi function: {}".format(e), file = sys.stderr)
+            
+            try: #get ceterpoint of ROI, draw crosshair, get distance from centerpoint to camera
+                average_width = int((box_max_width + box_min_width) / 2)
+                average_height = int((box_max_height + box_min_height) / 2)
+
+                cv.line(image, (average_width - 10,average_height) , (average_width + 10,average_height), (0,255,0), 1)
+                cv.line(image, (average_width,average_height - 10) , (average_width,average_height + 10), (0,255,0), 1)
+
+                distance = measure_distance(depth_image, average_width, average_height) 
+                print("Distance to object is: {}m".format(distance))
+                average_height = 0
+                average_width = 0
+            except Exception as e:
+                print("Error calling measure_distance function: {}".format(e), file = sys.stderr)
+            except: print ("Object not in frame!") 
+
+        #Functions relating to the LiDAR, it's features and extracting the data for processing
         if self._lidar_measurement is not None:
-             lidar_data = self._lidar_measurement.point_cloud
-             #print('Lidar output:{}'.format(lidar_data))
-             np.savetxt('D:\ADP\CarlaSimulator-20220211T045029Z-001\CarlaSimulator\PythonClient\estadp\out_image\lidar{}.csv'.format(self._timer.step), lidar_data, delimiter = ',')
+            # lidar_data = self._lidar_measurement.point_cloud
+            # o3d.io.write_point_cloud("D:\ADP\CarlaSimulator-20220211T045029Z-001\CarlaSimulator\PythonClient\estadp\out_image\PointCloud{}.pcd".format(self._timer.step), lidar_data)
+            # #lidar_channels = self._lidar_measurement.channels
+            # lidar_angle = self._lidar_measurement.horizontal_angle           
+            # #print("Channels: {}\t". format(lidar_channels))
+            # print("Angle at step {}: {}".format(self._timer.step, lidar_angle))
+
+            # try:
+            #     lidar_data_cloud = o3d.io.read_point_cloud(lidar_data)
+            #     #o3d.visualization.draw_geometries([lidar_data_cloud])
+            #     lidar_array = np.asarray(lidar_data_cloud)
+            #     print("Lidar data: {}".format(lidar_array))
+            # except TypeError:
+            #     print("PointCloud is not iterable!")
+            # except:
+            #     ("Lidar data not sanitized!")
+            lidar_data = np.array(self._lidar_measurement.data[:, :2])
+            np.savetxt('D:\ADP\CarlaSimulator-20220211T045029Z-001\CarlaSimulator\PythonClient\estadp\out_image\lidar_raw{}.csv'.format(self._timer.step), lidar_data, delimiter = ',')
+            lidar_data *= 2.0
+            lidar_data += 100.0
+            lidar_data = np.fabs(lidar_data)
+            lidar_data = lidar_data.astype(np.int32)
+            lidar_data = np.reshape(lidar_data, (-1, 2))
+            #print(np.shape(lidar_data))
+            np.savetxt('D:\ADP\CarlaSimulator-20220211T045029Z-001\CarlaSimulator\PythonClient\estadp\out_image\lidar_clean{}.csv'.format(self._timer.step), lidar_data, delimiter = ',')
+
+            #print(np.size(lidar_data_clean))
+            #lidar_array = np.asarray(lidar_data_clean)
+            #lidar_size = np.size(lidar_array)
+            #print('Lidar output size:{}'.format(lidar_size))
+            #np.savetxt('D:\ADP\CarlaSimulator-20220211T045029Z-001\CarlaSimulator\PythonClient\estadp\out_image\lidar{}.csv'.format(self._timer.step), lidar_array, delimiter = ',')
+        
         # Print measurements every second.
         if self._timer.elapsed_seconds_since_lap() > 1.0:
             if self._city_name is not None:
@@ -350,18 +429,18 @@ class CarlaGame(object):
             surface = pygame.surfarray.make_surface(array.swapaxes(0, 1))
             self._display.blit(surface, (0, 0))
 
-        if self._mini_view_image1 is not None:
-            array = image_converter.depth_to_logarithmic_grayscale(self._mini_view_image1)
-            surface = pygame.surfarray.make_surface(array.swapaxes(0, 1))
-            self._display.blit(surface, (gap_x, mini_image_y))
+        # if self._mini_view_image1 is not None:
+        #     array = image_converter.depth_to_logarithmic_grayscale(self._mini_view_image1)
+        #     surface = pygame.surfarray.make_surface(array.swapaxes(0, 1))
+        #     self._display.blit(surface, (gap_x, mini_image_y))
 
-        if self._mini_view_image2 is not None:
-            array = image_converter.labels_to_cityscapes_palette(
-                self._mini_view_image2)
-            surface = pygame.surfarray.make_surface(array.swapaxes(0, 1))
+        # if self._mini_view_image2 is not None:
+        #     array = image_converter.labels_to_cityscapes_palette(
+        #         self._mini_view_image2)
+        #     surface = pygame.surfarray.make_surface(array.swapaxes(0, 1))
 
-            self._display.blit(
-                surface, (2 * gap_x + MINI_WINDOW_WIDTH, mini_image_y))
+        #     self._display.blit(
+        #         surface, (2 * gap_x + MINI_WINDOW_WIDTH, mini_image_y))
 
         if self._lidar_measurement is not None:
             lidar_data = np.array(self._lidar_measurement.data[:, :2])
