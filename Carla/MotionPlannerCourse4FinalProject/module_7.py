@@ -88,7 +88,7 @@ PLOT_BOT           = 0.1
 PLOT_WIDTH         = 0.8
 PLOT_HEIGHT        = 0.8
 
-WAYPOINTS_FILENAME = 'course4_test_waypoints_original_speed.txt'  # waypoint file to load
+WAYPOINTS_FILENAME = 'course4_test_waypoints.txt'  # waypoint file to load
 #WAYPOINTS_FILENAME = 'racetrack_waypoints.txt'
 DIST_THRESHOLD_TO_LAST_WAYPOINT = 2.0  # some distance from last position before
                                        # simulation ends
@@ -799,7 +799,7 @@ def exec_waypoint_nav_demo(args):
                 goal_index = bp.get_goal_index(waypoints, ego_state, closest_len, closest_index)
                 goal_state = waypoints[goal_index][2]
                 if lead_car_distance < look_ahead_dist-10:
-                    if lead_car_speed[1] < 25:
+                    if lead_car_speed[1] < 25: # if the leading vehicle speed is higher than 25, we need overtake
                         Follow_state = False
                         closest_len, closest_index = behavioural_planner.get_closest_index(waypoints, ego_state)
                         goal_index = bp.get_goal_index(waypoints, ego_state, closest_len, closest_index)
@@ -809,7 +809,13 @@ def exec_waypoint_nav_demo(args):
                         closest_len, closest_index = behavioural_planner.get_closest_index(waypoints, ego_state)
                         goal_index = bp.get_goal_index(waypoints, ego_state, closest_len, closest_index)
                         goal_state = waypoints[goal_index][2]
-                if  Follow_state == False:
+                # to close record the obstacle after overtake. check relative position with leading vehicle 
+                #if lead_car_pos[1][0]>ego_state[0]:
+                 #   Follow_state == True
+                #else:
+                #    Follow_state == False
+
+                if  Follow_state == False and lead_car_pos[1][0] < ego_state[0]:
                     dir_path ='C:\\Users\\User\\Desktop\\Motion-Planning\\CarlaSimulator\\PythonClient\\MotionPlannerCourse4FinalProject'
                     os.chdir(dir_path)
                     with open('parked_vehicle_params.txt', 'a', newline='') as f_object:
@@ -819,6 +825,8 @@ def exec_waypoint_nav_demo(args):
                         #writer_object.writerow([Decimal(lead_car_pos[1][0]+5),Decimal(lead_car_pos[1][1]),'38.1','180','2.5','0.9708','0.789'])
                         writer_object.writerow([x_pos,y_pos,'38.1','180','2.5','0.9708','0.789'])
                     f_object.close()
+                #elif lead_car_pos[1][0] > ego_state[0]:
+                #    Follow_state = True
                 # Compute the goal state set from the behavioural planner's computed goal state.
                 goal_state_set = lp.get_goal_state_set(bp._goal_index, bp._goal_state, waypoints, ego_state)
 
