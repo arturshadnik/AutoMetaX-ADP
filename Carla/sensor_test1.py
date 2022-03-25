@@ -247,7 +247,7 @@ class CarlaGame(object):
         
         #Functions relating to camera data and converting it to opencv and numpy data for processing
         if self._main_image is not None and self._mini_view_image1 is not None and self._mini_view_image2 is not None:
-            label = 4 #object to outline. 4 = pedestrian, 7 = road, 10 = car
+            label = 10 #object to outline. 4 = pedestrian, 7 = road, 10 = car
             
             image = image_converter.to_bgra_array(self._main_image)
             seg_image = image_converter.labels_to_array(self._mini_view_image2)

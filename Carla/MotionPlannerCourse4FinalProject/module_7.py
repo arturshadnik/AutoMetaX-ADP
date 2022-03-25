@@ -749,7 +749,7 @@ def exec_waypoint_nav_demo(args):
 
                     #cv.line(image, (average_width - 10,average_height) , (average_width + 10,average_height), (0,255,0), 1)
                     #cv.line(image, (average_width,average_height - 10) , (average_width,average_height + 10), (0,255,0), 1)
-                    #cv.imshow("image", _depth_image)
+                    #cv.imshow("image", seg_image)
                     distance = measure_distance(depth_image, average_width, average_height) 
                     print("Distance to object is: {}m".format(distance))
 
