@@ -702,6 +702,7 @@ def exec_waypoint_nav_demo(args):
         prev_collision_pedestrians = 0
         prev_collision_other       = 0
         #check_episode = 1
+        temp=0
         for frame in range(TOTAL_EPISODE_FRAMES):
             
             parkedcar_data = None
@@ -769,7 +770,8 @@ def exec_waypoint_nav_demo(args):
             
             # Update Static Obstacle through Caemra, if distance/speed<3s, record 
             # Also need to check if hte obstacle is static or dynamic 
-            if distance/current_speed < 3 and parkedcar_data[-1][0]-parkedcar_data[-2][0]<1 and parkedcar_data[-1][0]-parkedcar_data[-2][0]>-1:
+            #if distance/current_speed < 3 and parkedcar_data[-1][0]-parkedcar_data[-2][0]<1 and parkedcar_data[-1][0]-parkedcar_data[-2][0]>-1:
+            if parkedcar_data[-1][0]-parkedcar_data[-2][0]<1 and parkedcar_data[-1][0]-parkedcar_data[-2][0]>-1:
                 print("Distance to object is: {}m".format(distance))
                 dir_path ='C:\\Users\\User\\Desktop\\CarlaSimulator\\PythonClient\\MotionPlannerCourse4FinalProject'
                 os.chdir(dir_path)
@@ -838,6 +840,7 @@ def exec_waypoint_nav_demo(args):
             lead_car_pos    = []
             lead_car_length = []
             lead_car_speed  = []
+            lead_car_velocity=[]
           
                    
             # Execute the behaviour and local planning in the current instance
@@ -876,23 +879,52 @@ def exec_waypoint_nav_demo(args):
 
 
                 if parkedcar_data[-1][0]-parkedcar_data[-2][0]>2 or parkedcar_data[-1][0]-parkedcar_data[-2][0]<-2:
-                    print("Distance to object is: {}m".format(distance))
-                    if distance<look_ahead_dist:
-                     for agent in measurement_data.non_player_agents:
-                        agent_id = agent.id
-                        lead_car_pos.append([current_x-distance,128])
-                        lead_car_length.append(2.5)
-                        lead_car_speed.append(agent.vehicle.forward_speed)
-                    
+                    #print("Distance to object is: {}m".format(temp-distance))
+                        #print("leading vehicle speed: {}m/s".format(open_loop_speed-(temp-distance)/(current_timestamp - prev_timestamp)))
+                        lead_car_velocity= open_loop_speed-(temp-distance)/(current_timestamp - prev_timestamp)
+                    #print("lead_car_velocity: {}m/s".format(lead_car_velocity))
+                        if distance<look_ahead_dist:
+                            for agent in measurement_data.non_player_agents:
+                                agent_id = agent.id
+                                #lead_car_velocity=open_loop_speed-(temp-distance)/(current_timestamp - prev_timestamp)
+                                #print("lead car velocity:{}m/s".format(lead_car_velocity))
+                                temp=distance 
+                                lead_car_pos.append([current_x-distance,128])
+                                lead_car_length.append(2.5)
+                                lead_car_speed.append(lead_car_velocity)
+                                #print("lead car speed:{}m/s".format(lead_car_speed))
+                        else:
+                            for agent in measurement_data.non_player_agents:
+                                agent_id = agent.id
+                                if agent.HasField('vehicle'):
+                                    lead_car_pos.append(
+                                    [0,0])
+                                    lead_car_length.append(2.5)
+                                    lead_car_speed.append(0.01)
                 else:
                     for agent in measurement_data.non_player_agents:
                         agent_id = agent.id
+                        lead_car_velocity=0
                         if agent.HasField('vehicle'):
-                            lead_car_pos.append(
-                            [agent.vehicle.transform.location.x,
-                           agent.vehicle.transform.location.y])
-                            lead_car_length.append(agent.vehicle.bounding_box.extent.x)
-                            lead_car_speed.append(agent.vehicle.forward_speed)
+                                lead_car_pos.append(
+                                [0,0])
+                                lead_car_length.append(2.5)
+                                lead_car_speed.append(0.01)
+                    """
+                    else:
+                            for agent in measurement_data.non_player_agents:
+                                agent_id = agent.id
+                                if agent.HasField('vehicle'):
+                                    lead_car_pos.append(
+                                    [agent.vehicle.transform.location.x,
+                                    agent.vehicle.transform.location.y])
+                                    lead_car_length.append(agent.vehicle.bounding_box.extent.x)
+                                    lead_car_speed.append(agent.vehicle.forward_speed)
+                    """
+                        
+                
+                
+
 
 
                 # Perform a state transition in the behavioural planner.
@@ -907,8 +939,9 @@ def exec_waypoint_nav_demo(args):
                 closest_len, closest_index = behavioural_planner.get_closest_index(waypoints, ego_state)
                 goal_index = bp.get_goal_index(waypoints, ego_state, closest_len, closest_index)
                 goal_state = waypoints[goal_index][2]
-                if lead_car_distance < look_ahead_dist-10:
-                    if lead_car_speed[1] < 25: # if the leading vehicle speed is higher than 25, we need overtake
+                #if lead_car_distance < look_ahead_dist-10:
+                if lead_car_pos[1][0] != 0:
+                    if lead_car_velocity < 5 : # if the leading vehicle speed is lower than 25, we need overtake
                         Follow_state = False
                         closest_len, closest_index = behavioural_planner.get_closest_index(waypoints, ego_state)
                         goal_index = bp.get_goal_index(waypoints, ego_state, closest_len, closest_index)
@@ -932,7 +965,7 @@ def exec_waypoint_nav_demo(args):
                         x_pos = int(lead_car_pos[1][0]-10)
                         y_pos = int(lead_car_pos[1][1])
                         #writer_object.writerow([Decimal(lead_car_pos[1][0]+5),Decimal(lead_car_pos[1][1]),'38.1','180','2.5','0.9708','0.789'])
-                        writer_object.writerow([x_pos,y_pos,'38.1','180','2.5','0.9708','0.789'])
+                        writer_object.writerow([x_pos,'128','38.1','180','2.5','0.9708','0.789'])
                     f_object.close()
                 #elif lead_car_pos[1][0] > ego_state[0]:
                 #    Follow_state = True
