@@ -138,7 +138,7 @@ def make_carla_settings(args):
         lidar.set_position(0, 0, 2.5)
         lidar.set_rotation(0, 0, 0)
         lidar.set(
-            Channels=32, 
+            Channels=1, 
             Range=50,
             PointsPerSecond=100000,
             RotationFrequency=10,
@@ -246,45 +246,45 @@ class CarlaGame(object):
         self._lidar_measurement = sensor_data.get('Lidar32', None)
         
         #Functions relating to camera data and converting it to opencv and numpy data for processing
-        if self._main_image is not None and self._mini_view_image1 is not None and self._mini_view_image2 is not None:
-            label = 10 #object to outline. 4 = pedestrian, 7 = road, 10 = car
+        # if self._main_image is not None and self._mini_view_image1 is not None and self._mini_view_image2 is not None:
+        #     label = 10 #object to outline. 4 = pedestrian, 7 = road, 10 = car
             
-            image = image_converter.to_bgra_array(self._main_image)
-            seg_image = image_converter.labels_to_array(self._mini_view_image2)
-            #seg_image = cv.resize(seg_image, (WINDOW_WIDTH,WINDOW_HEIGHT), interpolation=cv.INTER_NEAREST)
-            depth_image = MAX_DISTANCE*(image_converter.depth_to_array(self._mini_view_image1))
+        #     image = image_converter.to_bgra_array(self._main_image)
+        #     seg_image = image_converter.labels_to_array(self._mini_view_image2)
+        #     #seg_image = cv.resize(seg_image, (WINDOW_WIDTH,WINDOW_HEIGHT), interpolation=cv.INTER_NEAREST)
+        #     depth_image = MAX_DISTANCE*(image_converter.depth_to_array(self._mini_view_image1))
            
-            #cv.imwrite('D:\ADP\CarlaSimulator-20220211T045029Z-001\CarlaSimulator\PythonClient\estadp\out_image\image{}.jpg'.format(self._timer.step), image)
+        #     #cv.imwrite('D:\ADP\CarlaSimulator-20220211T045029Z-001\CarlaSimulator\PythonClient\estadp\out_image\image{}.jpg'.format(self._timer.step), image)
            
-            #np.savetxt('D:\ADP\CarlaSimulator-20220211T045029Z-001\CarlaSimulator\PythonClient\estadp\out_image\depth_image{}.csv'.format(self._timer.step), depth_image, delimiter = ',')
-            #cv.imwrite('D:\ADP\CarlaSimulator-20220211T045029Z-001\CarlaSimulator\PythonClient\estadp\out_image\depth_image{}.jpg'.format(self._timer.step), depth_image)
+        #     #np.savetxt('D:\ADP\CarlaSimulator-20220211T045029Z-001\CarlaSimulator\PythonClient\estadp\out_image\depth_image{}.csv'.format(self._timer.step), depth_image, delimiter = ',')
+        #     #cv.imwrite('D:\ADP\CarlaSimulator-20220211T045029Z-001\CarlaSimulator\PythonClient\estadp\out_image\depth_image{}.jpg'.format(self._timer.step), depth_image)
            
-            #np.savetxt('D:\ADP\CarlaSimulator-20220211T045029Z-001\CarlaSimulator\PythonClient\estadp\out_image\segmentation_image{}.csv'.format(self._timer.step), seg_image, delimiter = ',')
-            #cv.imwrite('D:\ADP\CarlaSimulator-20220211T045029Z-001\CarlaSimulator\PythonClient\estadp\out_image\segmentation_image{}.jpg'.format(self._timer.step), seg_image)
+        #     #np.savetxt('D:\ADP\CarlaSimulator-20220211T045029Z-001\CarlaSimulator\PythonClient\estadp\out_image\segmentation_image{}.csv'.format(self._timer.step), seg_image, delimiter = ',')
+        #     #cv.imwrite('D:\ADP\CarlaSimulator-20220211T045029Z-001\CarlaSimulator\PythonClient\estadp\out_image\segmentation_image{}.jpg'.format(self._timer.step), seg_image)
             
-            #cv.imshow("Image", image)
-            #cv.imshow("Depth Image", depth_image)
-            try: #get bounding box around object of interest
-                box_max_height, box_min_height, box_max_width, box_min_width = get_object_roi(seg_image, self._timer.step, label)
-                cv.rectangle(image, (box_min_width, box_min_height),(box_max_width,box_max_height), (0,0,0), 2)
-                #cv.imshow("Image", image)
-            except TypeError as e:
-                print("Error calling get_object_roi function: {}".format(e), file = sys.stderr)
+        #     #cv.imshow("Image", image)
+        #     #cv.imshow("Depth Image", depth_image)
+        #     try: #get bounding box around object of interest
+        #         box_max_height, box_min_height, box_max_width, box_min_width = get_object_roi(seg_image, self._timer.step, label)
+        #         cv.rectangle(image, (box_min_width, box_min_height),(box_max_width,box_max_height), (0,0,0), 2)
+        #         #cv.imshow("Image", image)
+        #     except TypeError as e:
+        #         print("Error calling get_object_roi function: {}".format(e), file = sys.stderr)
             
-            try: #get ceterpoint of ROI, draw crosshair, get distance from centerpoint to camera
-                average_width = int((box_max_width + box_min_width) / 2)
-                average_height = int((box_max_height + box_min_height) / 2)
+        #     try: #get ceterpoint of ROI, draw crosshair, get distance from centerpoint to camera
+        #         average_width = int((box_max_width + box_min_width) / 2)
+        #         average_height = int((box_max_height + box_min_height) / 2)
 
-                cv.line(image, (average_width - 10,average_height) , (average_width + 10,average_height), (0,255,0), 1)
-                cv.line(image, (average_width,average_height - 10) , (average_width,average_height + 10), (0,255,0), 1)
+        #         cv.line(image, (average_width - 10,average_height) , (average_width + 10,average_height), (0,255,0), 1)
+        #         cv.line(image, (average_width,average_height - 10) , (average_width,average_height + 10), (0,255,0), 1)
 
-                distance = measure_distance(depth_image, average_width, average_height) 
-                print("Distance to object is: {}m".format(distance))
-                average_height = 0
-                average_width = 0
-            except Exception as e:
-                print("Error calling measure_distance function: {}".format(e), file = sys.stderr)
-            except: print ("Object not in frame!") 
+        #         distance = measure_distance(depth_image, average_width, average_height) 
+        #         print("Distance to object is: {}m".format(distance))
+        #         average_height = 0
+        #         average_width = 0
+        #     except Exception as e:
+        #         print("Error calling measure_distance function: {}".format(e), file = sys.stderr)
+        #     except: print ("Object not in frame!") 
 
         #Functions relating to the LiDAR, it's features and extracting the data for processing
         if self._lidar_measurement is not None:
@@ -303,7 +303,7 @@ class CarlaGame(object):
             # except TypeError:
             #     print("PointCloud is not iterable!")
             # except:
-            #     ("Lidar data not sanitized!")
+            #     ("Lidar data not sanitized!") 
             lidar_data = np.array(self._lidar_measurement.data[:, :2])
             np.savetxt('D:\ADP\CarlaSimulator-20220211T045029Z-001\CarlaSimulator\PythonClient\estadp\out_image\lidar_raw{}.csv'.format(self._timer.step), lidar_data, delimiter = ',')
             lidar_data *= 2.0
