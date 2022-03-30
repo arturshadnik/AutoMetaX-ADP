@@ -703,8 +703,10 @@ def exec_waypoint_nav_demo(args):
         prev_collision_other       = 0
         #check_episode = 1
         temp=0
+
         for frame in range(TOTAL_EPISODE_FRAMES):
             
+            HasVision = True
             parkedcar_data = None
             parkedcar_box_pts = []      # [x,y]
             with open('parked_vehicle_params.txt', 'r') as parkedcar_file:
@@ -738,27 +740,31 @@ def exec_waypoint_nav_demo(args):
                 image = image_converter.to_bgra_array(_depth_image)
                 seg_image = image_converter.labels_to_array(_semantic_image)
                 depth_image = MAX_DISTANCE*(image_converter.depth_to_array(_depth_image))
-
+                #cv.imshow("Image", image)
                 try: #get bounding box around object of interest
                     box_max_height, box_min_height, box_max_width, box_min_width = get_object_roi(seg_image, label)
-                    #cv.rectangle(image, (box_min_width, box_min_height),(box_max_width,box_max_height), (0,0,0), 2)
-
+                    cv.rectangle(image, (box_min_width, box_min_height),(box_max_width,box_max_height), (0,0,0), 2)
+                    cv.imshow("image",image)
                 except TypeError as e:
                     print("Error calling get_object_roi function: {}".format(e), file = sys.stderr)
-                
-                try: #get ceterpoint of ROI, draw crosshair, get distance from centerpoint to camera
-                    average_width = int((box_max_width + box_min_width) / 2)
-                    average_height = int((box_max_height + box_min_height) / 2)
+                    HasVision = False
+                if HasVision == True:
+                    try: #get ceterpoint of ROI, draw crosshair, get distance from centerpoint to camera
+                        average_width = int((box_max_width + box_min_width) / 2)
+                        average_height = int((box_max_height + box_min_height) / 2)
 
-                    #cv.line(image, (average_width - 10,average_height) , (average_width + 10,average_height), (0,255,0), 1)
-                    #cv.line(image, (average_width,average_height - 10) , (average_width,average_height + 10), (0,255,0), 1)
-                    #cv.imshow("image", seg_image)
-                    distance = measure_distance(depth_image, average_width, average_height) 
-                    #print("Distance to object is: {}m".format(distance))
+                        #cv.line(image, (average_width - 10,average_height) , (average_width + 10,average_height), (0,255,0), 1)
+                        #cv.line(image, (average_width,average_height - 10) , (average_width,average_height + 10), (0,255,0), 1)
+                        #cv.imshow("image", seg_image)
+                        distance = measure_distance(depth_image, average_width, average_height) 
+                        #print("Distance to object is: {}m".format(distance))
 
-                except Exception as e:
-                    print("Error calling measure_distance function: {}".format(e), file = sys.stderr)
-                except: print ("Object not in frame!") 
+                    except Exception as e:
+                        print("Error calling measure_distance function: {}".format(e), file = sys.stderr)
+                    except: print ("Object not in frame!") 
+                else:
+                    distance = 0
+
             else: print("No camera data!")
             # Update pose and timestamp
             prev_timestamp = current_timestamp
@@ -766,12 +772,13 @@ def exec_waypoint_nav_demo(args):
                 get_current_pose(measurement_data)
             current_speed = measurement_data.player_measurements.forward_speed
             current_timestamp = float(measurement_data.game_timestamp) / 1000.0
+                
             #for i in range(len(parkedcar_data)):
             
             # Update Static Obstacle through Caemra, if distance/speed<3s, record 
             # Also need to check if hte obstacle is static or dynamic 
             #if distance/current_speed < 3 and parkedcar_data[-1][0]-parkedcar_data[-2][0]<1 and parkedcar_data[-1][0]-parkedcar_data[-2][0]>-1:
-            if parkedcar_data[-1][0]-parkedcar_data[-2][0]<1 and parkedcar_data[-1][0]-parkedcar_data[-2][0]>-1:
+            if parkedcar_data[-1][0]-parkedcar_data[-2][0]<0.3 and parkedcar_data[-1][0]-parkedcar_data[-2][0]>-0.3:
                 print("Distance to object is: {}m".format(distance))
                 dir_path ='C:\\Users\\User\\Desktop\\CarlaSimulator\\PythonClient\\MotionPlannerCourse4FinalProject'
                 os.chdir(dir_path)
@@ -780,7 +787,7 @@ def exec_waypoint_nav_demo(args):
                         x_pos = int(current_x-distance)
                         y_pos = int(current_y)
                         #writer_object.writerow([Decimal(lead_car_pos[1][0]+5),Decimal(lead_car_pos[1][1]),'38.1','180','2.5','0.9708','0.789'])
-                        writer_object.writerow([x_pos,'128','38.1','180','2.5','0.9708','0.789'])
+                        writer_object.writerow([x_pos,'128.9','38.1','180','2.5','0.9708','0.789'])
                 f_object.close()
 
             for i in range(ct):
@@ -875,34 +882,56 @@ def exec_waypoint_nav_demo(args):
 
                 # Set lookahead based on current speed.
                 bp.set_lookahead(BP_LOOKAHEAD_BASE + BP_LOOKAHEAD_TIME * open_loop_speed)
-                look_ahead_dist = BP_LOOKAHEAD_BASE + BP_LOOKAHEAD_TIME * open_loop_speed
+                look_ahead_dist = BP_LOOKAHEAD_BASE + 0.5*BP_LOOKAHEAD_TIME * open_loop_speed
 
-
-                if parkedcar_data[-1][0]-parkedcar_data[-2][0]>2 or parkedcar_data[-1][0]-parkedcar_data[-2][0]<-2:
+                #if parkedcar_data[-1][0]-parkedcar_data[-2][0]>2 or parkedcar_data[-1][0]-parkedcar_data[-2][0]<-2:
                     #print("Distance to object is: {}m".format(temp-distance))
                         #print("leading vehicle speed: {}m/s".format(open_loop_speed-(temp-distance)/(current_timestamp - prev_timestamp)))
-                        lead_car_velocity= open_loop_speed-(temp-distance)/(current_timestamp - prev_timestamp)
-                    #print("lead_car_velocity: {}m/s".format(lead_car_velocity))
-                        if distance<look_ahead_dist:
-                            for agent in measurement_data.non_player_agents:
-                                agent_id = agent.id
-                                #lead_car_velocity=open_loop_speed-(temp-distance)/(current_timestamp - prev_timestamp)
+                        #lead_car_velocity= open_loop_speed-(temp-distance)/(current_timestamp - prev_timestamp) 
+                
+                if distance<look_ahead_dist and HasVision:
+                            for i in range(10):
+                                #agent_id = agent.id
+                                #if agent.HasField('vehicle'):
+                                    lead_car_velocity=open_loop_speed-(temp-distance)/(current_timestamp - prev_timestamp)
                                 #print("lead car velocity:{}m/s".format(lead_car_velocity))
-                                temp=distance 
-                                lead_car_pos.append([current_x-distance,128])
-                                lead_car_length.append(2.5)
-                                lead_car_speed.append(lead_car_velocity)
-                                #print("lead car speed:{}m/s".format(lead_car_speed))
-                        else:
-                            for agent in measurement_data.non_player_agents:
-                                agent_id = agent.id
-                                if agent.HasField('vehicle'):
-                                    lead_car_pos.append(
-                                    [0,0])
+                                    temp=distance 
+                                #for i in range(10): # predict next five steps with constant velocity model
+                                    lead_dist_update = lead_car_velocity*i
+                                    #print("current_x: {}m".format(current_x))
+                                    #print("dsitance: {}m".format(distance))
+                                    #print("lead_dsit_update: {}m".format(lead_dist_update))
+                                
+                                    lead_car_pos.append([current_x-distance-lead_dist_update,129.5])
+                                #print("lead_car_pos: {}m".format(lead_car_pos))
                                     lead_car_length.append(2.5)
-                                    lead_car_speed.append(0.01)
-                else:
-                    for agent in measurement_data.non_player_agents:
+                                    lead_car_speed.append(lead_car_velocity)
+                                #print("lead car speed:{}m/s".format(lead_car_speed))
+               
+                for agent in measurement_data.non_player_agents:
+                        #agent_id = agent.id
+                        #if agent.HasField('vehicle'):
+                            lead_car_pos.append([0,0])
+                            lead_car_length.append(2.5)
+                            lead_car_speed.append(0.01)
+                            print("in else")
+                #print(current_x-distance)
+                #print(lead_car_pos[0])
+                #print(ego_state[0])
+                #if lead_car_pos[0][0]>ego_state[0]:
+                    #lead_car_pos=[]
+                    #for i in range(10):
+                                #lead_car_velocity=open_loop_speed-(temp-distance)/(current_timestamp - prev_timestamp)
+                                #temp=distance 
+                                #lead_car_pos.append([current_x-distance-2,129.5])
+                                #lead_car_length.append(2.5)
+                                #lead_car_speed.append(lead_car_velocity)
+                    #print(lead_car_pos)
+
+
+                #else:
+                """
+                for agent in measurement_data.non_player_agents:
                         agent_id = agent.id
                         lead_car_velocity=0
                         if agent.HasField('vehicle'):
@@ -910,8 +939,9 @@ def exec_waypoint_nav_demo(args):
                                 [0,0])
                                 lead_car_length.append(2.5)
                                 lead_car_speed.append(0.01)
-                    """
-                    else:
+                """                
+                """
+                else:
                             for agent in measurement_data.non_player_agents:
                                 agent_id = agent.id
                                 if agent.HasField('vehicle'):
@@ -922,11 +952,6 @@ def exec_waypoint_nav_demo(args):
                                     lead_car_speed.append(agent.vehicle.forward_speed)
                     """
                         
-                
-                
-
-
-
                 # Perform a state transition in the behavioural planner.
                 bp.transition_state(waypoints, ego_state, current_speed)
 
@@ -941,7 +966,7 @@ def exec_waypoint_nav_demo(args):
                 goal_state = waypoints[goal_index][2]
                 #if lead_car_distance < look_ahead_dist-10:
                 if lead_car_pos[1][0] != 0:
-                    if lead_car_velocity < 5 : # if the leading vehicle speed is lower than 25, we need overtake
+                    if lead_car_velocity < 9 : # if the leading vehicle speed is lower than 25, we need overtake
                         Follow_state = False
                         closest_len, closest_index = behavioural_planner.get_closest_index(waypoints, ego_state)
                         goal_index = bp.get_goal_index(waypoints, ego_state, closest_len, closest_index)
@@ -957,15 +982,16 @@ def exec_waypoint_nav_demo(args):
                 #else:
                 #    Follow_state == False
 
-                if  Follow_state == False and lead_car_pos[1][0] < ego_state[0]:
+                if  Follow_state == False and lead_car_pos[0][0] < ego_state[0]:
                     dir_path ='C:\\Users\\User\\Desktop\\CarlaSimulator\\PythonClient\\MotionPlannerCourse4FinalProject'
                     os.chdir(dir_path)
                     with open('parked_vehicle_params.txt', 'a', newline='') as f_object:
                         writer_object = writer(f_object)
-                        x_pos = int(lead_car_pos[1][0]-10)
+                        x_pos = int(lead_car_pos[2][0]-3)
                         y_pos = int(lead_car_pos[1][1])
                         #writer_object.writerow([Decimal(lead_car_pos[1][0]+5),Decimal(lead_car_pos[1][1]),'38.1','180','2.5','0.9708','0.789'])
-                        writer_object.writerow([x_pos,'128','38.1','180','2.5','0.9708','0.789'])
+                        
+                        writer_object.writerow([x_pos,'128.9','38.1','180','2.5','0.9708','0.789'])
                     f_object.close()
                 #elif lead_car_pos[1][0] > ego_state[0]:
                 #    Follow_state = True
@@ -1055,7 +1081,6 @@ def exec_waypoint_nav_demo(args):
                 cmd_throttle = 0.0
                 cmd_steer = 0.0
                 cmd_brake = 0.0
-
             # Skip the first frame or if there exists no local paths
             if skip_first_frame and frame == 0:
                 pass
