@@ -138,12 +138,12 @@ def make_carla_settings(args):
         lidar.set_position(0, 0, 2.5)
         lidar.set_rotation(0, 0, 0)
         lidar.set(
-            Channels=1, 
-            Range=50,
-            PointsPerSecond=100000,
-            RotationFrequency=10,
-            UpperFovLimit=0,
-            LowerFovLimit=-1)
+            Channels=32, 
+            Range=12,
+            PointsPerSecond=7200,
+            RotationFrequency=20,
+            UpperFovLimit=10,
+            LowerFovLimit=-30)
         settings.add_sensor(lidar)
     return settings
 
@@ -305,6 +305,9 @@ class CarlaGame(object):
             # except:
             #     ("Lidar data not sanitized!") 
             lidar_data = np.array(self._lidar_measurement.data[:, :2])
+            lidar_angle = self._lidar_measurement.horizontal_angle
+            print("angle at step {} is {}".format(self._timer.step,lidar_angle))
+            #np.savetxt('D:\ADP\CarlaSimulator-20220211T045029Z-001\CarlaSimulator\PythonClient\estadp\out_image\lidar_angle{}.csv'.format(self._timer.step), lidar_angle, delimiter = ',')
             np.savetxt('D:\ADP\CarlaSimulator-20220211T045029Z-001\CarlaSimulator\PythonClient\estadp\out_image\lidar_raw{}.csv'.format(self._timer.step), lidar_data, delimiter = ',')
             lidar_data *= 2.0
             lidar_data += 100.0
