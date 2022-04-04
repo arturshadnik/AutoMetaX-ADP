@@ -9,6 +9,7 @@ import pyzed.sl as sl
 import math
 import cv2 as cv
 import time
+from sys import exit
 
 
 def initialize_camera():
