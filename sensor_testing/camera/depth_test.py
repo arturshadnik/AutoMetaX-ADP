@@ -42,7 +42,7 @@ def capture_image(zed):
         
     return [image, depth, point_cloud]
 
-def process_image(image, depth):       
+def process_image(image, depth, count):       
     image_cv = image.get_data()
     
     gray = cv.cvtColor(image_cv, cv.COLOR_BGR2GRAY)
@@ -67,7 +67,8 @@ def process_image(image, depth):
     cv.line(image_cv, (x - 20,y) , (x + 20,y), (0,255,0), 2)
     cv.line(image_cv, (x,y - 20) , (x,y + 20), (0,255,0), 2)
     cv.imshow("image", image_cv)
-    
+    cv.imwrite("out{}.jpg".format(count), image_cv)
+
 def main():
     zed = initialize_camera()
     count = 0;
@@ -79,7 +80,7 @@ def main():
         tic = time.perf_counter()
         
         [image, depth, point_cloud] = capture_image(zed)
-        process_image(image, depth)
+        process_image(image, depth, count)
         count = count + 1
         if cv.waitKey(1) & 0xFF == ord('q'): #exit using "q"
             break
