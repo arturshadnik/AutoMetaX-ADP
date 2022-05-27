@@ -1,3 +1,4 @@
+from ctypes import sizeof
 import cv2
 import numpy as np
 #import matplotlib.pyplot as plt
@@ -14,6 +15,11 @@ classes = ['pedestrians', 'speed-30 km', 'speed-50 km', 'speed-60 km', 'stop', '
            'Curved road sign']
 
 #cap = cv2.VideoCapture(0) ### change camera
+def get_distance_to_object(depth_image, x, y):
+
+    err, distance = depth_image.get_value(x, y)
+
+    return distance
 
 def initialize_camera():
     zed = sl.Camera()
@@ -32,20 +38,24 @@ def initialize_camera():
         
     return zed    
 
-def capture_image(zed):    
+def capture_frame(zed):    
     image = sl.Mat()
+    depth = sl.Mat()
     runtime_parameters = sl.RuntimeParameters()
     
     if zed.grab(runtime_parameters) == sl.ERROR_CODE.SUCCESS:
-        zed.retrieve_image(image, sl.VIEW.LEFT)       
-    return image
+        zed.retrieve_image(image, sl.VIEW.LEFT)
+        zed.retrieve_measure(depth, sl.MEASURE.DEPTH)
+        
+    return [image, depth]
+
 
 def main():
     zed = initialize_camera()
     while 1:
         
-        image = capture_image(zed)
-        img= image.get_data()
+        image, depth = capture_frame(zed)
+        img = image.get_data()
         img = cv2.cvtColor(img, cv2.COLOR_RGBA2RGB)
         # img = cv2.imread(filePath)
         #img = cv2.resize(img, (1280, 720))
@@ -96,7 +106,7 @@ def main():
         boxes = []
         confidences = []
         class_ids = []
-    
+
         for output in layerOutputs:  # loop over each of the layer outputs
             for detection in output:   # loop over each of the object detections
                 score = detection[5:]
@@ -114,10 +124,14 @@ def main():
     
                     # update our list of bounding box coordinates, confidences,
                     # and class IDs
+                    if class_id == 0:
+                        distance_to_car = get_distance_to_object(depth, center_x, center_y)
+                        print(distance_to_car)
+
                     boxes.append([x, y, w, h])
                     confidences.append((float(confidence)))
                     class_ids.append(class_id)
-    
+
         indexes = cv2.dnn.NMSBoxes(boxes, confidences, .8, .4)
         ### idxs = cv2.dnn.NMSBoxes(boxes, confidences, SCORE_THRESHOLD, IOU_THRESHOLD)
         ### indexes = cv2.dnn.NMSBoxes(boxes, confidences,score_threshold,nms_threshold,top_k=1)
@@ -136,7 +150,8 @@ def main():
                 color = colors[i]  ### yolo box's color for different objects
                 cv2.rectangle(img, (x, y), (x + w, y + h), color, 2)  ### yolo predicting box (rectangle)
                 cv2.putText(img, label + " " + confidence, (x, y + 400), font, 2, color, 2)  ### text on yolo predicting box (rectangle) which is class+confidence
-    
+                #cv2.putText(img, depth, (x,y), font, 2, color, 2)
+#                print(distance_to_car)
         cv2.imshow('img', img)
         if cv2.waitKey(1) == ord('q'):   ###press "q" to quit opencv
             break
