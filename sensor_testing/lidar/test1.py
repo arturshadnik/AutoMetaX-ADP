@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from rplidar import RPLidar
 
 def initialize_lidar():
-    lidar = RPLidar('COM3', baudrate=115200)
+    lidar = RPLidar('/dev/ttyUSB0', baudrate=115200)
     
     info = lidar.get_info()
     print(info)

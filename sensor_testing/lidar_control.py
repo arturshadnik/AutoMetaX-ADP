@@ -8,33 +8,34 @@ import subprocess
 import threading
 from queue import Queue
 import numpy as np
-import matplotlib.pyplot as plt
-from collections import deque
 import time
+#import sensorfunctions
+import cv2 as cv
+import os
 
 lidar_queue = Queue()
 lidar_bins = np.arange(361)
 lidar_field = np.zeros((1, 361))
 lidar_threshold = 1500
-obst_threshold = 4000
-pos_threshold = 640
-estop = 0
-dist_ave = obst_threshold
-pos_ave = pos_threshold
 
+#function to empty a directory, only needed during testing to clear out output location, remove in production
+def emptydir(top):
+    if(top == '/' or top == "\\"): return
+    else:
+        for root, dirs, files in os.walk(top, topdown=False):
+            for name in files:
+                os.remove(os.path.join(root, name))
+            for name in dirs:
+                os.rmdir(os.path.join(root, name))  
 def main():
-    global pos_threshold
-
+    emptydir("D:/ADP/lidar_testing/outputs")
     # Start the lidar interfacing thread
     lidar = LidarThread()
     lidar.start()
 
-    # Start the lidar process thread
-    lidar_process = LidarProcessThread()
+    # Start the control thread
+    lidar_process = ControlThread()
     lidar_process.start()
-    
-    lidar_plot = LidarPlotThread()
-    lidar_plot.start()
     
 class LidarThread(threading.Thread):
     def run(self):
@@ -44,63 +45,52 @@ class LidarThread(threading.Thread):
         # For every incoming line in the output pipeline put it into the lidar data queue
         for line in lidar_exe.stdout:
             lidar_queue.put(line)
-
-class LidarProcessThread(threading.Thread):
+  
+class ControlThread(threading.Thread):
     def run(self):
+        vid = cv.VideoCapture(1)
+
         global lidar_field
-        global estop
-        global dist_ave
-        # Initialize moving average queue with size mov_avg_win
-        #mov_avg_win = 30
-        #dist_q = deque(obst_threshold * np.ones(mov_avg_win), maxlen=mov_avg_win)
+        #sensorfunctions.initialize_camera()
         # Initialize raw data storage array
         lidar_field_raw = np.zeros((2, 361))
-        # Initialize array that determines scanning cone, currently 20 degrees in front of device
-        #lidar_scan = np.concatenate([np.arange(350, 361), np.arange(11)])
         
+        #do data processing, call controllers
         while 1:
             # Data is obtained from the queue
             lidar_data = lidar_queue.get()
+            
             # Data is split into its constituent parts
             theta = float(lidar_data.split()[0])
             dist = float(lidar_data.split()[1])
+            
             # Bin the data according to analog theta values
             bin_num = np.digitize(theta, lidar_bins)
             if bin_num == 361:
                 bin_num = 0
+                
             # Assign data based on bin number
             lidar_field_raw[0, bin_num] = dist
-            
             lidar_field = np.fliplr(lidar_field_raw)
-        
-            # Set to largest possible value == LiDAR range
             field = np.transpose(lidar_field)
             
-            lidar_field_binary = LidarPlotThread.controller(field, lidar_field)
-            np.savetxt('D:/ADP/lidar_testing/outputs/data_binary{}.csv'.format(time.strftime("%Y%m%d%H%M%S", time.localtime())), lidar_field_binary, delimiter = ',')
-
-class LidarPlotThread(threading.Thread):
-    def run(self):
-        count = 0
-        # Turn on interactive plot options
-        plt.ion()
-        while 1:
-            # Initialize polar plot
-
-            plt.cla()
-            ax = plt.subplot(111, projection='polar')
-            # Plot LiDAR data in radians
-            ax.scatter(np.deg2rad(lidar_bins), lidar_field[0], s=0.5)
-            # Set plot parameters
-            ax.set_theta_zero_location("N")
-            ax.set_ylim(0, 8000)
-            # Plot update frequency
-            plt.pause(0.01)
-            if (count % 20 == 0):
-                np.savetxt('D:/ADP/lidar_testing/outputs/data{}.csv'.format(count), lidar_field, delimiter = ',')
-            count += 1
+            # ret, frame = vid.read()
+            # print("tired to take an image")
+            # #if camera working, beging data collection
+            # if ret == True:
+            #     cv.imshow('frame', frame)
+            #     print("took an image")
+            # if cv.waitKey(1) & 0xFF == ord('q'): #exit using "q"
+            #     break
+            # #call dummy controller, returns an 2x360 array of [distance, flag]
+            lidar_field_binary = ControlThread.controller_dummy(field, lidar_field)
+            # cv.imwrite("D:/ADP/lidar_testing/outputs/frame{}.jpg".format(time.strftime("%Y%m%d%H%M%S", time.localtime())), frame)
             
-    def controller(field, lidar_field):
+            #save each lidar array, only do this for testing, not in production
+            np.savetxt('D:/ADP/lidar_testing//data_binary{}.csv'.format(time.strftime("%Y%m%d%H%M%S", time.localtime())), lidar_field_binary, delimiter = ',')
+    
+    #replace this with whatever controller is needed
+    def controller_dummy(field, lidar_field):
         i = 0
         lidar_field_binary = lidar_field
         while i < 361:
@@ -113,5 +103,6 @@ class LidarPlotThread(threading.Thread):
             i += 1
 
         return lidar_field_binary
+        
 if __name__ == "__main__":
     main()
