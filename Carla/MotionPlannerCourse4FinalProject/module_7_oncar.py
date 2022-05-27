@@ -38,6 +38,8 @@ import local_planner
 import behavioural_planner
 import cv2 as cv
 import sys
+import serial
+from math import trunc
 
 # Script level imports
 sys.path.append(os.path.abspath(sys.path[0] + '/..'))
@@ -67,6 +69,9 @@ CLIENT_WAIT_TIME       = 3      # wait time for client before starting episode
 WINDOW_WIDTH = 1280
 WINDOW_HEIGHT = 720
 MAX_DISTANCE = 1000
+STEER = 0
+THROTTLE = 0
+THROTTLE_MAX = 1050
 
 WEATHERID = {
     "DEFAULT": 0,
@@ -134,6 +139,9 @@ INTERP_DISTANCE_RES       = 0.01 # distance between interpolated points
 CONTROLLER_OUTPUT_FOLDER = os.path.dirname(os.path.realpath(__file__)) +\
                            '/controller_output/'
 getcontext().prec = 2
+
+serial_com = serial.Serial('COM3',9600)
+serial_com.timeout = 1
 
 def make_carla_settings(args):
     """Make a CarlaSettings object with the settings we need.
@@ -894,13 +902,19 @@ def exec_waypoint_nav_demo(args):
                                 #agent_id = agent.id
                                 #if agent.HasField('vehicle'):
                                     lead_car_velocity=open_loop_speed-(temp-distance)/(current_timestamp - prev_timestamp)
-                                    print("lead car velocity:{}m/s".format(lead_car_velocity))
+                                #print("lead car velocity:{}m/s".format(lead_car_velocity))
                                     temp=distance 
                                 #for i in range(10): # predict next five steps with constant velocity model
-                                    lead_dist_update = lead_car_velocity*i                   
+                                    lead_dist_update = lead_car_velocity*i
+                                    #print("current_x: {}m".format(current_x))
+                                    #print("dsitance: {}m".format(distance))
+                                    #print("lead_dsit_update: {}m".format(lead_dist_update))
+                                
                                     lead_car_pos.append([current_x-distance-lead_dist_update,129.5])
+                                #print("lead_car_pos: {}m".format(lead_car_pos))
                                     lead_car_length.append(2.5)
-                                    lead_car_speed.append(lead_car_velocity)                 
+                                    lead_car_speed.append(lead_car_velocity)
+                                #print("lead car speed:{}m/s".format(lead_car_speed))
                
                 for agent in measurement_data.non_player_agents:
                         #agent_id = agent.id
@@ -908,7 +922,7 @@ def exec_waypoint_nav_demo(args):
                             lead_car_pos.append([0,0])
                             lead_car_length.append(2.5)
                             lead_car_speed.append(0.01)
-                            
+
                 #print(current_x-distance)
                 #print(lead_car_pos[0])
                 #print(ego_state[0])
@@ -950,36 +964,26 @@ def exec_waypoint_nav_demo(args):
                 bp.transition_state(waypoints, ego_state, current_speed)
 
                 # Check to see if we need to follow the lead vehicle.
-                Follow_state=bp.check_for_lead_vehicle(ego_state, lead_car_pos[1], lead_car_speed[0])
+                Follow_state=bp.check_for_lead_vehicle(ego_state, lead_car_pos[1], lead_car_speed[1])
                 lead_car_delta_vector = [lead_car_pos[1][0] - ego_state[0], 
                                      lead_car_pos[1][1] - ego_state[1]]
                 lead_car_distance = np.linalg.norm(lead_car_delta_vector)
-
                 #if lead_car_distance < 50:
                 closest_len, closest_index = behavioural_planner.get_closest_index(waypoints, ego_state)
                 goal_index = bp.get_goal_index(waypoints, ego_state, closest_len, closest_index)
-                goal_state = waypoints[goal_index]
+                goal_state = waypoints[goal_index][2]
                 #if lead_car_distance < look_ahead_dist-10:
-                max_speed = 9 # 9 
                 if lead_car_pos[1][0] != 0:
-                    if lead_car_velocity < 0.95*max_speed : # if the leading vehicle speed is lower than 25(7), we need overtake
+                    if lead_car_velocity < 9 : # if the leading vehicle speed is lower than 25, we need overtake
                         Follow_state = False
-                        print("Follow state = False")
                         closest_len, closest_index = behavioural_planner.get_closest_index(waypoints, ego_state)
                         goal_index = bp.get_goal_index(waypoints, ego_state, closest_len, closest_index)
-                        goal_state = waypoints[goal_index]
+                        #goal_state = waypoints[goal_index][2] * 1.5
                     else:
                         Follow_state = True
-                        print("Follow state = True")
                         closest_len, closest_index = behavioural_planner.get_closest_index(waypoints, ego_state)
                         goal_index = bp.get_goal_index(waypoints, ego_state, closest_len, closest_index)
-                        goal_state = waypoints[goal_index]
-                        if lead_car_speed[0] > max_speed:
-                            lead_car_speed[0] = max_speed
-                        goal_state[2] = lead_car_speed[0]
-                        print(lead_car_velocity)  
-
-
+                        goal_state = waypoints[goal_index][2]
                 # to close record the obstacle after overtake. check relative position with leading vehicle 
                 #if lead_car_pos[1][0]>ego_state[0]:
                  #   Follow_state == True
@@ -1000,9 +1004,8 @@ def exec_waypoint_nav_demo(args):
                 #elif lead_car_pos[1][0] > ego_state[0]:
                 #    Follow_state = True
                 # Compute the goal state set from the behavioural planner's computed goal state.
-                #goal_state_set = lp.get_goal_state_set(bp._goal_index, bp._goal_state, waypoints, ego_state)
-                goal_state_set = lp.get_goal_state_set(goal_index, goal_state, waypoints, ego_state)
-                
+                goal_state_set = lp.get_goal_state_set(bp._goal_index, bp._goal_state, waypoints, ego_state)
+
                 # Calculate planned paths in the local frame.
                 paths, path_validity = lp.plan_paths(goal_state_set)
 
@@ -1024,10 +1027,8 @@ def exec_waypoint_nav_demo(args):
                 # Compute the velocity profile for the path, and compute the waypoints.
                 # Use the lead vehicle to inform the velocity profile's dynamic obstacle handling.
                 # In this scenario, the only dynamic obstacle is the lead vehicle at index 1.
-
                 #desired_speed = bp._goal_state[2]
-                desired_speed = goal_state[2]
-
+                desired_speed = goal_state
                 lead_car_state = [lead_car_pos[1][0], lead_car_pos[1][1], lead_car_speed[1]]
                 decelerate_to_stop = bp._state == behavioural_planner.DECELERATE_TO_STOP
                 local_waypoints = lp._velocity_planner.compute_velocity_profile(best_path, desired_speed, ego_state, current_speed, decelerate_to_stop,lead_car_state, Follow_state)
@@ -1084,10 +1085,45 @@ def exec_waypoint_nav_demo(args):
                                          current_timestamp, frame)
                 controller.update_controls()
                 cmd_throttle, cmd_steer, cmd_brake = controller.get_commands()
-            else:
+                STEER = cmd_steer
+                THROTTLE = cmd_throttle
+                #THROTTLE = 0.0
+                
+            else:   
                 cmd_throttle = 0.0
                 cmd_steer = 0.0
                 cmd_brake = 0.0
+                STEER = cmd_steer
+                THROTTLE = cmd_throttle
+
+                
+            #convert steering and throttle to 4 digit numbers
+            predicted_steering = STEER
+            #predicted_throttle = "{0:.4f}".format(THROTTLE)
+            predicted_throttle = THROTTLE*THROTTLE_MAX*0.5
+            if predicted_steering < 0:
+                #predicted_steering = int(map(predicted_steering, -1, 0, 1365, 2047.5))
+                predicted_steering = 1365+(1365-2047.5)*predicted_steering*3.3 # map it betwwen 0.3-0 - > 3.3
+            elif predicted_steering > 0:
+                predicted_steering = 2047.5+(2730-2047.5)*predicted_steering*3.3
+            else:
+                predicted_steering = 0
+
+            predicted_steering= trunc(predicted_steering)
+            predicted_throttle = trunc(predicted_throttle)
+
+            
+            predicted_steering = str(predicted_steering).zfill(4)
+            predicted_throttle = str(predicted_throttle).zfill(4)
+
+            print(predicted_steering)
+            print(predicted_throttle)
+
+            send_data = predicted_steering + predicted_throttle +'\n'
+
+            # send data via serial communication
+            serial_com.write(send_data.encode())
+            time.sleep(0.05)
             # Skip the first frame or if there exists no local paths
             if skip_first_frame and frame == 0:
                 pass
@@ -1194,7 +1230,9 @@ def main():
         -q, --quality-level: graphics quality level [Low or Epic]
         -i, --images-to-disk: save images to disk
         -c, --carla-settings: Path to CarlaSettings.ini file
+
     """
+
     argparser = argparse.ArgumentParser(description=__doc__)
     argparser.add_argument(
         '-v', '--verbose',
@@ -1236,7 +1274,8 @@ def main():
     logging.info('listening to server %s:%s', args.host, args.port)
 
     args.out_filename_format = '_out/episode_{:0>4d}/{:s}/{:0>6d}'
-
+    
+    
     # Execute when server connection is established
     while True:
         try:

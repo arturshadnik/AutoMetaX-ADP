@@ -1,16 +1,7 @@
-from __future__ import print_function
-from __future__ import division
-#from typing_extensions import Self
 #!/usr/bin/env python3
 
 # This work is licensed under the terms of the MIT license.
 # For a copy, see <https://opensource.org/licenses/MIT>.
-
-"""
-Assignments Solution Author: Engin Bozkurt
-Motion Planning for Self-Driving Cars
-Aug 24, 2019
-"""
 
 """
 CARLA waypoint follower assessment client script.
@@ -20,7 +11,8 @@ can be defined using way-points.
 
 STARTING in a moment...
 """
-
+from __future__ import print_function
+from __future__ import division
 
 # System level imports
 import sys
@@ -36,8 +28,6 @@ import controller2d
 import configparser 
 import local_planner
 import behavioural_planner
-import cv2 as cv
-import sys
 
 # Script level imports
 sys.path.append(os.path.abspath(sys.path[0] + '/..'))
@@ -47,9 +37,7 @@ from carla.client     import make_carla_client, VehicleControl
 from carla.settings   import CarlaSettings
 from carla.tcp        import TCPConnectionError
 from carla.controller import utils
-from carla import image_converter
-from csv import writer
-from decimal import *
+
 """
 Configurable params
 """
@@ -64,9 +52,6 @@ SEED_VEHICLES          = 0      # seed for vehicle spawn randomizer
 CLIENT_WAIT_TIME       = 3      # wait time for client before starting episode
                                 # used to make sure the server loads
                                 # consistently
-WINDOW_WIDTH = 1280
-WINDOW_HEIGHT = 720
-MAX_DISTANCE = 1000
 
 WEATHERID = {
     "DEFAULT": 0,
@@ -96,14 +81,13 @@ PLOT_WIDTH         = 0.8
 PLOT_HEIGHT        = 0.8
 
 WAYPOINTS_FILENAME = 'course4_waypoints.txt'  # waypoint file to load
-#WAYPOINTS_FILENAME = 'racetrack_waypoints.txt'
 DIST_THRESHOLD_TO_LAST_WAYPOINT = 2.0  # some distance from last position before
                                        # simulation ends
 
 # Planning Constants
 NUM_PATHS = 7
-BP_LOOKAHEAD_BASE      = 16.0              # m
-BP_LOOKAHEAD_TIME      = 1.0              # s
+BP_LOOKAHEAD_BASE      = 8.0              # m
+BP_LOOKAHEAD_TIME      = 2.0              # s
 PATH_OFFSET            = 1.5              # m
 CIRCLE_OFFSETS         = [-1.0, 1.0, 3.0] # m
 CIRCLE_RADII           = [1.5, 1.5, 1.5]  # m
@@ -119,6 +103,7 @@ LP_FREQUENCY_DIVISOR   = 2                # Frequency divisor to make the
                                           # (which operates at the simulation
                                           # frequency). Must be a natural
                                           # number.
+PREV_BEST_PATH         = []
 
 # Course 4 specific parameters
 C4_STOP_SIGN_FILE        = 'stop_sign_params.txt'
@@ -133,7 +118,6 @@ INTERP_DISTANCE_RES       = 0.01 # distance between interpolated points
 # controller output directory
 CONTROLLER_OUTPUT_FOLDER = os.path.dirname(os.path.realpath(__file__)) +\
                            '/controller_output/'
-getcontext().prec = 2
 
 def make_carla_settings(args):
     """Make a CarlaSettings object with the settings we need.
@@ -156,17 +140,6 @@ def make_carla_settings(args):
         SeedPedestrians=SEED_PEDESTRIANS,
         WeatherId=SIMWEATHER,
         QualityLevel=args.quality_level)
-
-    camera0 = sensor.Camera('CameraDepth', PostProcessing='Depth')
-    camera0.set_image_size(WINDOW_WIDTH, WINDOW_HEIGHT)
-    camera0.set_position(2.2, 0.0, 0.8)
-    camera0.set_rotation(0.0, 0.0, 0.0)
-    settings.add_sensor(camera0)
-    camera1 = sensor.Camera('CameraSemSeg', PostProcessing='SemanticSegmentation')
-    camera1.set_image_size(WINDOW_WIDTH, WINDOW_HEIGHT)
-    camera1.set_position(2.2, 0.0, 0.8)
-    camera1.set_rotation(0.0, 0.0, 0.0)
-    settings.add_sensor(camera1)
     return settings
 
 class Timer(object):
@@ -324,31 +297,10 @@ def write_collisioncount_file(collided_list):
     with open(file_name, 'w') as collision_file: 
         collision_file.write(str(sum(collided_list)))
 
-#find region where object of interest is present
-def get_object_roi(image, label):
-    roi = np.where(image == label) # 4 = pedestrian, 7 = road, 10 = cars
-    #print(roi)
-    try:
-        box_min_width = np.min(roi[1])
-        box_max_width = np.max(roi[1])
-        box_min_height = np.min(roi[0])
-        box_max_height = np.max(roi[0])
-
-        #print("Size of ROI is: {0} x {1}".format(box_max_height-box_min_height, box_max_width-box_min_width))
-        return box_max_height, box_min_height, box_max_width, box_min_width
-
-    except Exception as e:
-        print("Error getting ROI in get_object_roi function: {}".format(e), file = sys.stderr)   
-
-#measure distance to object of interest
-def measure_distance(depth_image, point_x, point_y):
-    #print(point_x, point_y)
-    distance = depth_image[point_y, point_x]
-    return distance
-
 def exec_waypoint_nav_demo(args):
     """ Executes waypoint navigation demo.
     """
+
     with make_carla_client(args.host, args.port) as client:
         print('Carla client connected.')
 
@@ -364,9 +316,9 @@ def exec_waypoint_nav_demo(args):
         # player start information
         player_start = PLAYER_START_INDEX
 
-        #client.start_episode(player_start)
+        client.start_episode(player_start)
 
-        #time.sleep(CLIENT_WAIT_TIME);
+        time.sleep(CLIENT_WAIT_TIME);
 
         # Notify the server that we want to start the episode at the
         # player_start index. This function blocks until the server is ready
@@ -396,7 +348,6 @@ def exec_waypoint_nav_demo(args):
         # Set options
         live_plot_timer = Timer(live_plot_period)
 
-        
         #############################################
         # Load stop sign and parked vehicle parameters
         # Convert to input params for LP
@@ -442,18 +393,12 @@ def exec_waypoint_nav_demo(args):
                                           quoting=csv.QUOTE_NONNUMERIC)
             parkedcar_data = list(parkedcar_reader)
             # convert to rad
-            ct=0
-            for rows in parkedcar_data:
-                ct+=1
-            #for i in range(len(parkedcar_data)):
-            for i in range(ct):
+            for i in range(len(parkedcar_data)):
                 parkedcar_data[i][3] = parkedcar_data[i][3] * np.pi / 180.0 
 
         # obtain parked car(s) box points for LP
-        #for i in range(len(parkedcar_data)):
-        for i in range(ct):
-            #x = parkedcar_data[i][0]
-            x=parkedcar_data[i][0]
+        for i in range(len(parkedcar_data)):
+            x = parkedcar_data[i][0]
             y = parkedcar_data[i][1]
             z = parkedcar_data[i][2]
             yaw = parkedcar_data[i][3]
@@ -495,8 +440,6 @@ def exec_waypoint_nav_demo(args):
         # and apply it to the simulator
         controller = controller2d.Controller2D(waypoints)
 
-
-        
         #############################################
         # Determine simulation average timestep (and total frames)
         #############################################
@@ -679,7 +622,8 @@ def exec_waypoint_nav_demo(args):
                                         TIME_GAP,
                                         A_MAX,
                                         SLOW_SPEED,
-                                        STOP_LINE_BUFFER)
+                                        STOP_LINE_BUFFER,
+                                        PREV_BEST_PATH)
         bp = behavioural_planner.BehaviouralPlanner(BP_LOOKAHEAD_BASE,
                                                     stopsign_fences,
                                                     LEAD_VEHICLE_LOOKAHEAD)
@@ -701,117 +645,17 @@ def exec_waypoint_nav_demo(args):
         prev_collision_vehicles    = 0
         prev_collision_pedestrians = 0
         prev_collision_other       = 0
-        #check_episode = 1
-        temp=0
 
         for frame in range(TOTAL_EPISODE_FRAMES):
-            
-            HasVision = True
-            parkedcar_data = None
-            parkedcar_box_pts = []      # [x,y]
-            with open('parked_vehicle_params.txt', 'r') as parkedcar_file:
-                next(parkedcar_file)  # skip header
-                parkedcar_reader = csv.reader(parkedcar_file, 
-                                          delimiter=',', 
-                                          quoting=csv.QUOTE_NONNUMERIC)
-                parkedcar_data = list(parkedcar_reader)
-                # convert to rad
-                ct=0
-                for rows in parkedcar_data:
-                    ct+=1
-                #for i in range(len(parkedcar_data)):
-                for i in range(ct):
-                    parkedcar_data[i][3] = parkedcar_data[i][3] * np.pi / 180.0 
-                    # obtain parked car(s) box points for LP
-
-
-
             # Gather current data from the CARLA server
             measurement_data, sensor_data = client.read_data()
-            #if sensor_data is not None:
-                #print("Got sensor data")
-            #Get camara data and measure distance
-            _depth_image = sensor_data.get('CameraDepth', None)
-            _semantic_image = sensor_data.get('CameraSemSeg', None)
 
-            if _depth_image is not None and _semantic_image is not None:
-                label = 10 #object to outline. 4 = pedestrian, 7 = road, 10 = car
-                
-                image = image_converter.to_bgra_array(_depth_image)
-                seg_image = image_converter.labels_to_array(_semantic_image)
-                depth_image = MAX_DISTANCE*(image_converter.depth_to_array(_depth_image))
-                #cv.imshow("Image", image)
-                try: #get bounding box around object of interest
-                    box_max_height, box_min_height, box_max_width, box_min_width = get_object_roi(seg_image, label)
-                    cv.rectangle(image, (box_min_width, box_min_height),(box_max_width,box_max_height), (0,0,0), 2)
-                    cv.imshow("image",image)
-                except TypeError as e:
-                    print("Error calling get_object_roi function: {}".format(e), file = sys.stderr)
-                    HasVision = False
-                if HasVision == True:
-                    try: #get ceterpoint of ROI, draw crosshair, get distance from centerpoint to camera
-                        average_width = int((box_max_width + box_min_width) / 2)
-                        average_height = int((box_max_height + box_min_height) / 2)
-
-                        #cv.line(image, (average_width - 10,average_height) , (average_width + 10,average_height), (0,255,0), 1)
-                        #cv.line(image, (average_width,average_height - 10) , (average_width,average_height + 10), (0,255,0), 1)
-                        #cv.imshow("image", seg_image)
-                        distance = measure_distance(depth_image, average_width, average_height) 
-                        #print("Distance to object is: {}m".format(distance))
-
-                    except Exception as e:
-                        print("Error calling measure_distance function: {}".format(e), file = sys.stderr)
-                    except: print ("Object not in frame!") 
-                else:
-                    distance = 0
-
-            else: print("No camera data!")
             # Update pose and timestamp
             prev_timestamp = current_timestamp
             current_x, current_y, current_yaw = \
                 get_current_pose(measurement_data)
             current_speed = measurement_data.player_measurements.forward_speed
             current_timestamp = float(measurement_data.game_timestamp) / 1000.0
-                
-            #for i in range(len(parkedcar_data)):
-            
-            # Update Static Obstacle through Caemra, if distance/speed<3s, record 
-            # Also need to check if hte obstacle is static or dynamic 
-            #if distance/current_speed < 3 and parkedcar_data[-1][0]-parkedcar_data[-2][0]<1 and parkedcar_data[-1][0]-parkedcar_data[-2][0]>-1:
-            if parkedcar_data[-1][0]-parkedcar_data[-2][0]<0.3 and parkedcar_data[-1][0]-parkedcar_data[-2][0]>-0.3:
-                print("Distance to object is: {}m".format(distance))
-                dir_path ='C:\\Users\\User\\Desktop\\CarlaSimulator\\PythonClient\\MotionPlannerCourse4FinalProject'
-                os.chdir(dir_path)
-                with open('parked_vehicle_params.txt', 'a', newline='') as f_object:
-                        writer_object = writer(f_object)
-                        x_pos = int(current_x-distance)
-                        y_pos = int(current_y)
-                        #writer_object.writerow([Decimal(lead_car_pos[1][0]+5),Decimal(lead_car_pos[1][1]),'38.1','180','2.5','0.9708','0.789'])
-                        writer_object.writerow([x_pos,'128.9','38.1','180','2.5','0.9708','0.789'])
-                f_object.close()
-
-            for i in range(ct):
-                x = parkedcar_data[i][0] #parkedcar_data[i][0]
-                #print("X value is: {}" .format(current_x - distance))
-                y = parkedcar_data[i][1]
-                z = parkedcar_data[i][2]
-                yaw = parkedcar_data[i][3]
-                xrad = parkedcar_data[i][4]
-                yrad = parkedcar_data[i][5]
-                zrad = parkedcar_data[i][6]
-                cpos = np.array([
-                        [-xrad, -xrad, -xrad, 0,    xrad, xrad, xrad,  0    ],
-                        [-yrad, 0,     yrad,  yrad, yrad, 0,    -yrad, -yrad]])
-                rotyaw = np.array([
-                        [np.cos(yaw), np.sin(yaw)],
-                        [-np.sin(yaw), np.cos(yaw)]])
-                cpos_shift = np.array([
-                        [x, x, x, x, x, x, x, x],
-                        [y, y, y, y, y, y, y, y]])
-                cpos = np.add(np.matmul(rotyaw, cpos), cpos_shift)
-                for j in range(cpos.shape[1]):
-                    parkedcar_box_pts.append([cpos[0,j], cpos[1,j]])
-
 
             # Wait for some initial time before starting the demo
             if current_timestamp <= WAIT_TIME_BEFORE_START:
@@ -843,13 +687,20 @@ def exec_waypoint_nav_demo(args):
             #   implementations that the learner will be tasked with in
             #   the Course 4 final project
             ###
+
             # Obtain Lead Vehicle information.
             lead_car_pos    = []
             lead_car_length = []
             lead_car_speed  = []
-            lead_car_velocity=[]
-          
-                   
+            for agent in measurement_data.non_player_agents:
+                agent_id = agent.id
+                if agent.HasField('vehicle'):
+                    lead_car_pos.append(
+                            [agent.vehicle.transform.location.x,
+                             agent.vehicle.transform.location.y])
+                    lead_car_length.append(agent.vehicle.bounding_box.extent.x)
+                    lead_car_speed.append(agent.vehicle.forward_speed)
+
             # Execute the behaviour and local planning in the current instance
             # Note that updating the local path during every controller update
             # produces issues with the tracking performance (imagine everytime
@@ -874,6 +725,7 @@ def exec_waypoint_nav_demo(args):
                 # TODO: Uncomment each code block between the dashed lines to run the planner.
                 # --------------------------------------------------------------
                 # Compute open loop speed estimate.
+                print("================= start ======================")
                 open_loop_speed = lp._velocity_planner.get_open_loop_speed(current_timestamp - prev_timestamp)
 
                 # Calculate the goal state set in the local frame for the local planner.
@@ -882,127 +734,16 @@ def exec_waypoint_nav_demo(args):
 
                 # Set lookahead based on current speed.
                 bp.set_lookahead(BP_LOOKAHEAD_BASE + BP_LOOKAHEAD_TIME * open_loop_speed)
-                look_ahead_dist = BP_LOOKAHEAD_BASE + 0.5*BP_LOOKAHEAD_TIME * open_loop_speed
 
-                #if parkedcar_data[-1][0]-parkedcar_data[-2][0]>2 or parkedcar_data[-1][0]-parkedcar_data[-2][0]<-2:
-                    #print("Distance to object is: {}m".format(temp-distance))
-                        #print("leading vehicle speed: {}m/s".format(open_loop_speed-(temp-distance)/(current_timestamp - prev_timestamp)))
-                        #lead_car_velocity= open_loop_speed-(temp-distance)/(current_timestamp - prev_timestamp) 
-                
-                if distance<look_ahead_dist and HasVision:
-                            for i in range(10):
-                                #agent_id = agent.id
-                                #if agent.HasField('vehicle'):
-                                    lead_car_velocity=open_loop_speed-(temp-distance)/(current_timestamp - prev_timestamp)
-                                    print("lead car velocity:{}m/s".format(lead_car_velocity))
-                                    temp=distance 
-                                #for i in range(10): # predict next five steps with constant velocity model
-                                    lead_dist_update = lead_car_velocity*i                   
-                                    lead_car_pos.append([current_x-distance-lead_dist_update,129.5])
-                                    lead_car_length.append(2.5)
-                                    lead_car_speed.append(lead_car_velocity)                 
-               
-                for agent in measurement_data.non_player_agents:
-                        #agent_id = agent.id
-                        #if agent.HasField('vehicle'):
-                            lead_car_pos.append([0,0])
-                            lead_car_length.append(2.5)
-                            lead_car_speed.append(0.01)
-                            
-                #print(current_x-distance)
-                #print(lead_car_pos[0])
-                #print(ego_state[0])
-                #if lead_car_pos[0][0]>ego_state[0]:
-                    #lead_car_pos=[]
-                    #for i in range(10):
-                                #lead_car_velocity=open_loop_speed-(temp-distance)/(current_timestamp - prev_timestamp)
-                                #temp=distance 
-                                #lead_car_pos.append([current_x-distance-2,129.5])
-                                #lead_car_length.append(2.5)
-                                #lead_car_speed.append(lead_car_velocity)
-                    #print(lead_car_pos)
-
-
-                #else:
-                """
-                for agent in measurement_data.non_player_agents:
-                        agent_id = agent.id
-                        lead_car_velocity=0
-                        if agent.HasField('vehicle'):
-                                lead_car_pos.append(
-                                [0,0])
-                                lead_car_length.append(2.5)
-                                lead_car_speed.append(0.01)
-                """                
-                """
-                else:
-                            for agent in measurement_data.non_player_agents:
-                                agent_id = agent.id
-                                if agent.HasField('vehicle'):
-                                    lead_car_pos.append(
-                                    [agent.vehicle.transform.location.x,
-                                    agent.vehicle.transform.location.y])
-                                    lead_car_length.append(agent.vehicle.bounding_box.extent.x)
-                                    lead_car_speed.append(agent.vehicle.forward_speed)
-                    """
-                        
                 # Perform a state transition in the behavioural planner.
                 bp.transition_state(waypoints, ego_state, current_speed)
-
+                print("The current speed = %f" % current_speed)
                 # Check to see if we need to follow the lead vehicle.
-                Follow_state=bp.check_for_lead_vehicle(ego_state, lead_car_pos[1], lead_car_speed[0])
-                lead_car_delta_vector = [lead_car_pos[1][0] - ego_state[0], 
-                                     lead_car_pos[1][1] - ego_state[1]]
-                lead_car_distance = np.linalg.norm(lead_car_delta_vector)
+                bp.check_for_lead_vehicle(ego_state, lead_car_pos[1])
 
-                #if lead_car_distance < 50:
-                closest_len, closest_index = behavioural_planner.get_closest_index(waypoints, ego_state)
-                goal_index = bp.get_goal_index(waypoints, ego_state, closest_len, closest_index)
-                goal_state = waypoints[goal_index]
-                #if lead_car_distance < look_ahead_dist-10:
-                max_speed = 9 # 9 
-                if lead_car_pos[1][0] != 0:
-                    if lead_car_velocity < 0.95*max_speed : # if the leading vehicle speed is lower than 25(7), we need overtake
-                        Follow_state = False
-                        print("Follow state = False")
-                        closest_len, closest_index = behavioural_planner.get_closest_index(waypoints, ego_state)
-                        goal_index = bp.get_goal_index(waypoints, ego_state, closest_len, closest_index)
-                        goal_state = waypoints[goal_index]
-                    else:
-                        Follow_state = True
-                        print("Follow state = True")
-                        closest_len, closest_index = behavioural_planner.get_closest_index(waypoints, ego_state)
-                        goal_index = bp.get_goal_index(waypoints, ego_state, closest_len, closest_index)
-                        goal_state = waypoints[goal_index]
-                        if lead_car_speed[0] > max_speed:
-                            lead_car_speed[0] = max_speed
-                        goal_state[2] = lead_car_speed[0]
-                        print(lead_car_velocity)  
-
-
-                # to close record the obstacle after overtake. check relative position with leading vehicle 
-                #if lead_car_pos[1][0]>ego_state[0]:
-                 #   Follow_state == True
-                #else:
-                #    Follow_state == False
-
-                if  Follow_state == False and lead_car_pos[0][0] < ego_state[0]:
-                    dir_path ='C:\\Users\\User\\Desktop\\CarlaSimulator\\PythonClient\\MotionPlannerCourse4FinalProject'
-                    os.chdir(dir_path)
-                    with open('parked_vehicle_params.txt', 'a', newline='') as f_object:
-                        writer_object = writer(f_object)
-                        x_pos = int(lead_car_pos[2][0]-3)
-                        y_pos = int(lead_car_pos[1][1])
-                        #writer_object.writerow([Decimal(lead_car_pos[1][0]+5),Decimal(lead_car_pos[1][1]),'38.1','180','2.5','0.9708','0.789'])
-                        
-                        writer_object.writerow([x_pos,'128.9','38.1','180','2.5','0.9708','0.789'])
-                    f_object.close()
-                #elif lead_car_pos[1][0] > ego_state[0]:
-                #    Follow_state = True
                 # Compute the goal state set from the behavioural planner's computed goal state.
-                #goal_state_set = lp.get_goal_state_set(bp._goal_index, bp._goal_state, waypoints, ego_state)
-                goal_state_set = lp.get_goal_state_set(goal_index, goal_state, waypoints, ego_state)
-                
+                goal_state_set = lp.get_goal_state_set(bp._goal_index, bp._goal_state, waypoints, ego_state)
+
                 # Calculate planned paths in the local frame.
                 paths, path_validity = lp.plan_paths(goal_state_set)
 
@@ -1014,24 +755,25 @@ def exec_waypoint_nav_demo(args):
 
                 # Compute the best local path.
                 best_index = lp._collision_checker.select_best_path_index(paths, collision_check_array, bp._goal_state)
+
+                print("The best_index = %d" % best_index)
+
                 # If no path was feasible, continue to follow the previous best path.
                 if best_index == None:
-                    best_path = lp._prev_best_path
+                    best_path = lp.prev_best_path
                 else:
                     best_path = paths[best_index]
-                    lp._prev_best_path = best_path
+                    lp.prev_best_path = best_path
 
                 # Compute the velocity profile for the path, and compute the waypoints.
                 # Use the lead vehicle to inform the velocity profile's dynamic obstacle handling.
                 # In this scenario, the only dynamic obstacle is the lead vehicle at index 1.
-
-                #desired_speed = bp._goal_state[2]
-                desired_speed = goal_state[2]
-
+                desired_speed = bp._goal_state[2]
+                print("The desired_speed = %f" % desired_speed)
                 lead_car_state = [lead_car_pos[1][0], lead_car_pos[1][1], lead_car_speed[1]]
                 decelerate_to_stop = bp._state == behavioural_planner.DECELERATE_TO_STOP
-                local_waypoints = lp._velocity_planner.compute_velocity_profile(best_path, desired_speed, ego_state, current_speed, decelerate_to_stop,lead_car_state, Follow_state)
-                #print(local_waypoints[0])
+                local_waypoints = lp._velocity_planner.compute_velocity_profile(best_path, desired_speed, ego_state, current_speed, decelerate_to_stop, lead_car_state, bp._follow_lead_vehicle)
+                print("================= end ======================")
                 # --------------------------------------------------------------
 
                 if local_waypoints != None:
@@ -1088,6 +830,7 @@ def exec_waypoint_nav_demo(args):
                 cmd_throttle = 0.0
                 cmd_steer = 0.0
                 cmd_brake = 0.0
+
             # Skip the first frame or if there exists no local paths
             if skip_first_frame and frame == 0:
                 pass
@@ -1137,7 +880,8 @@ def exec_waypoint_nav_demo(args):
                 trajectory_fig.update("selected_path", 
                         wp_interp_np[path_indices.astype(int), 0],
                         wp_interp_np[path_indices.astype(int), 1],
-                        new_colour=[1, 0.5, 0.0])  
+                        new_colour=[1, 0.5, 0.0])
+
 
                 # Refresh the live plot based on the refresh rate 
                 # set by the options
@@ -1146,8 +890,7 @@ def exec_waypoint_nav_demo(args):
                     lp_traj.refresh()
                     lp_1d.refresh()
                     live_plot_timer.lap()
-            # Add episode number to track 
-            #check_episode=check_episode+1
+
             # Output controller command to CARLA server
             send_control_command(client,
                                  throttle=cmd_throttle,
@@ -1254,4 +997,3 @@ if __name__ == '__main__':
         main()
     except KeyboardInterrupt:
         print('\nCancelled by user. Bye!')
-

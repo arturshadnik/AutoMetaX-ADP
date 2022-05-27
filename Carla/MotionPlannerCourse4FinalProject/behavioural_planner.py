@@ -409,7 +409,7 @@ class BehaviouralPlanner:
             lead_car_distance = np.linalg.norm(lead_car_delta_vector)
             # In this case, the car is too far away.   
             if lead_car_distance > self._follow_lead_vehicle_lookahead:
-                return
+                return 
 
             lead_car_delta_vector = np.divide(lead_car_delta_vector, 
                                               lead_car_distance)
@@ -422,6 +422,7 @@ class BehaviouralPlanner:
                 return
 
             self._follow_lead_vehicle = True
+            #return True
 
         else:
             lead_car_delta_vector = [lead_car_position[0] - ego_state[0], 
@@ -438,6 +439,8 @@ class BehaviouralPlanner:
             if np.dot(lead_car_delta_vector, ego_heading_vector) > (1 / math.sqrt(2)):
                 return
             self._follow_lead_vehicle = False
+            #return False
+        return self._follow_lead_vehicle
 
 
 ######################################################
