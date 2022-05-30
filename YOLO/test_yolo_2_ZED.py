@@ -1,13 +1,11 @@
 from ctypes import sizeof
 import cv2
 import numpy as np
-#import matplotlib.pyplot as plt
 import pyzed.sl as sl
 
 ### provide the path for testing config file and trained model form colab # load the YOLO network
 net = cv2.dnn.readNetFromDarknet("yolov4-tiny-custom-test.cfg",
                                  r"yolov4-tiny-custom_last.weights")
-#  net = cv2.dnn.readNet("yolov4-tiny-custom_last.weights", "yolov4-tiny-custom-test.cfg")
 
 ### define classes
 classes = ['pedestrians', 'speed-30 km', 'speed-50 km', 'speed-60 km', 'stop', 'traffic light - green',
@@ -57,10 +55,6 @@ def main():
         image, depth = capture_frame(zed)
         img = image.get_data()
         img = cv2.cvtColor(img, cv2.COLOR_RGBA2RGB)
-        # img = cv2.imread(filePath)
-        #img = cv2.resize(img, (1280, 720))
-        #img = cv2.resize(img, (672,188))
-        #img = img[1:188, 1:336]
         height, width, channels = img.shape
     
         blob = cv2.dnn.blobFromImage(img, 1 / 255, (416, 416), (0, 0, 0), swapRB=True, crop=False)  # create 4D blob
@@ -124,7 +118,8 @@ def main():
     
                     # update our list of bounding box coordinates, confidences,
                     # and class IDs
-                    if class_id == 0:
+                    #if object of interest spotted, determine distance
+                    if class_id == 4 or class_id == 5 or class_id == 6 or class_id == 7:
                         distance_to_car = get_distance_to_object(depth, center_x, center_y)
                         print(distance_to_car)
 
@@ -142,16 +137,13 @@ def main():
         colors = np.random.uniform(0, 255, size=(len(boxes), 3))   ### color of predicting boxes  # generating colors for each object for later plotting
         if len(indexes) > 0:
             for i in indexes.flatten():
-    ### for i in range(len(boxes)):
-        ### if i in indexes:
                 x, y, w, h = boxes[i]
                 label = str(classes[class_ids[i]])   ### predicting result class
                 confidence = str(round(confidences[i], 2))   ### predicting result's confidence on the object
                 color = colors[i]  ### yolo box's color for different objects
                 cv2.rectangle(img, (x, y), (x + w, y + h), color, 2)  ### yolo predicting box (rectangle)
                 cv2.putText(img, label + " " + confidence, (x, y + 400), font, 2, color, 2)  ### text on yolo predicting box (rectangle) which is class+confidence
-                #cv2.putText(img, depth, (x,y), font, 2, color, 2)
-#                print(distance_to_car)
+
         cv2.imshow('img', img)
         if cv2.waitKey(1) == ord('q'):   ###press "q" to quit opencv
             break
