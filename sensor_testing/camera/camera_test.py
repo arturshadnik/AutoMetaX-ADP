@@ -31,6 +31,7 @@ runtime_parameters = sl.RuntimeParameters()
 err = zed.open(init_params)
 if err != sl.ERROR_CODE.SUCCESS:
     exit(1)
+    
 
 # # Print serial number
 # zed_serial = zed.get_camera_information().serial_number

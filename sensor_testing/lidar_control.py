@@ -9,7 +9,7 @@ import threading
 from queue import Queue
 import numpy as np
 import time
-#import sensorfunctions
+import sensorfunctions as sensor
 import cv2 as cv
 import os
 
@@ -48,10 +48,10 @@ class LidarThread(threading.Thread):
   
 class ControlThread(threading.Thread):
     def run(self):
-        vid = cv.VideoCapture(1)
+        vid = cv.VideoCapture(0)
 
         global lidar_field
-        #sensorfunctions.initialize_camera()
+        #zed = sensor.initialize_camera()
         # Initialize raw data storage array
         lidar_field_raw = np.zeros((2, 361))
         
@@ -74,20 +74,25 @@ class ControlThread(threading.Thread):
             lidar_field = np.fliplr(lidar_field_raw)
             field = np.transpose(lidar_field)
             
-            # ret, frame = vid.read()
-            # print("tired to take an image")
-            # #if camera working, beging data collection
-            # if ret == True:
-            #     cv.imshow('frame', frame)
-            #     print("took an image")
-            # if cv.waitKey(1) & 0xFF == ord('q'): #exit using "q"
-            #     break
-            # #call dummy controller, returns an 2x360 array of [distance, flag]
+            
+            ret, frame = vid.read()
+            #image, depth = sensor.capture_frame(zed)
+            print("tired to take an image")
+            #if camera working, beging data collection
+            if ret == True:
+                cv.imshow('image', frame)
+                print("took an image")
+            if cv.waitKey(1) & 0xFF == ord('q'): #exit using "q"
+                vid.release()
+                #sensor.close_camera(zed)
+                cv.destroyAllWindows()
+                break
+            #call dummy controller, returns an 2x360 array of [distance, flag]
             lidar_field_binary = ControlThread.controller_dummy(field, lidar_field)
             # cv.imwrite("D:/ADP/lidar_testing/outputs/frame{}.jpg".format(time.strftime("%Y%m%d%H%M%S", time.localtime())), frame)
             
             #save each lidar array, only do this for testing, not in production
-            np.savetxt('D:/ADP/lidar_testing//data_binary{}.csv'.format(time.strftime("%Y%m%d%H%M%S", time.localtime())), lidar_field_binary, delimiter = ',')
+            np.savetxt('D:/ADP/lidar_testing/outputs/data_binary{}.csv'.format(time.strftime("%Y%m%d%H%M%S", time.localtime())), lidar_field_binary, delimiter = ',')
     
     #replace this with whatever controller is needed
     def controller_dummy(field, lidar_field):

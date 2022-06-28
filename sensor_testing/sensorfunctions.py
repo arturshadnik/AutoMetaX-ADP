@@ -14,10 +14,10 @@ import numpy as np
 import pyzed.sl as sl
 import math
 import subprocess
-import rplidar as RPLidar
+#import rplidar as RPLidar
 from sys import exit
 
-LIDAR_COMM_PORT = 'COM3'
+LIDAR_COMM_PORT = 'COM6'
 LIDAR_FUNCTION = 'ultra_simple.exe'
 
 
@@ -64,6 +64,9 @@ def get_distance_to_object(depth_image, xmin, xmax, ymin, ymax):
     err, distance = depth_image.get_value(x, y)
     
     return distance
+
+def close_camera(zed):
+    zed.close()
 
 ######LIDAR FUNCTIONS######
 
