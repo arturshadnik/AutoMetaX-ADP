@@ -96,7 +96,7 @@ PLOT_WIDTH         = 0.8
 PLOT_HEIGHT        = 0.8
 
 WAYPOINTS_FILENAME = 'course4_waypoints.txt'  # waypoint file to load
-#WAYPOINTS_FILENAME = 'racetrack_waypoints.txt'
+#WAYPOINTS_FILENAME = 'town01-waypoints.txt'
 DIST_THRESHOLD_TO_LAST_WAYPOINT = 2.0  # some distance from last position before
                                        # simulation ends
 
@@ -705,7 +705,7 @@ def exec_waypoint_nav_demo(args):
         temp=0
 
         for frame in range(TOTAL_EPISODE_FRAMES):
-            
+            # Check if obstacle is static or dynamic
             HasVision = True
             parkedcar_data = None
             parkedcar_box_pts = []      # [x,y]
@@ -789,7 +789,6 @@ def exec_waypoint_nav_demo(args):
                         #writer_object.writerow([Decimal(lead_car_pos[1][0]+5),Decimal(lead_car_pos[1][1]),'38.1','180','2.5','0.9708','0.789'])
                         writer_object.writerow([x_pos,'128.9','38.1','180','2.5','0.9708','0.789'])
                 f_object.close()
-
             for i in range(ct):
                 x = parkedcar_data[i][0] #parkedcar_data[i][0]
                 #print("X value is: {}" .format(current_x - distance))
@@ -882,7 +881,7 @@ def exec_waypoint_nav_demo(args):
 
                 # Set lookahead based on current speed.
                 bp.set_lookahead(BP_LOOKAHEAD_BASE + BP_LOOKAHEAD_TIME * open_loop_speed)
-                look_ahead_dist = BP_LOOKAHEAD_BASE + 0.5*BP_LOOKAHEAD_TIME * open_loop_speed
+                look_ahead_dist = BP_LOOKAHEAD_BASE + BP_LOOKAHEAD_TIME * open_loop_speed
 
                 #if parkedcar_data[-1][0]-parkedcar_data[-2][0]>2 or parkedcar_data[-1][0]-parkedcar_data[-2][0]<-2:
                     #print("Distance to object is: {}m".format(temp-distance))
@@ -890,11 +889,12 @@ def exec_waypoint_nav_demo(args):
                         #lead_car_velocity= open_loop_speed-(temp-distance)/(current_timestamp - prev_timestamp) 
                 
                 if distance<look_ahead_dist and HasVision:
+                #if HasVision:
                             for i in range(10):
                                 #agent_id = agent.id
                                 #if agent.HasField('vehicle'):
                                     lead_car_velocity=open_loop_speed-(temp-distance)/(current_timestamp - prev_timestamp)
-                                    print("lead car velocity:{}m/s".format(lead_car_velocity))
+                                    #print("lead car velocity:{}m/s".format(lead_car_velocity))
                                     temp=distance 
                                 #for i in range(10): # predict next five steps with constant velocity model
                                     lead_dist_update = lead_car_velocity*i                   
@@ -944,7 +944,7 @@ def exec_waypoint_nav_demo(args):
                                     agent.vehicle.transform.location.y])
                                     lead_car_length.append(agent.vehicle.bounding_box.extent.x)
                                     lead_car_speed.append(agent.vehicle.forward_speed)
-                    """
+                """
                         
                 # Perform a state transition in the behavioural planner.
                 bp.transition_state(waypoints, ego_state, current_speed)
@@ -961,13 +961,15 @@ def exec_waypoint_nav_demo(args):
                 goal_state = waypoints[goal_index]
                 #if lead_car_distance < look_ahead_dist-10:
                 max_speed = 9 # 9 
+
                 if lead_car_pos[1][0] != 0:
-                    if lead_car_velocity < 0.95*max_speed : # if the leading vehicle speed is lower than 25(7), we need overtake
+                    if lead_car_velocity < 0.3*max_speed : # if the leading vehicle speed is lower than 25(7), we need overtake
                         Follow_state = False
                         print("Follow state = False")
                         closest_len, closest_index = behavioural_planner.get_closest_index(waypoints, ego_state)
                         goal_index = bp.get_goal_index(waypoints, ego_state, closest_len, closest_index)
                         goal_state = waypoints[goal_index]
+                        print(goal_state)
                     else:
                         Follow_state = True
                         print("Follow state = True")
@@ -978,14 +980,11 @@ def exec_waypoint_nav_demo(args):
                             lead_car_speed[0] = max_speed
                         goal_state[2] = lead_car_speed[0]
                         print(lead_car_velocity)  
-
-
                 # to close record the obstacle after overtake. check relative position with leading vehicle 
                 #if lead_car_pos[1][0]>ego_state[0]:
                  #   Follow_state == True
                 #else:
                 #    Follow_state == False
-
                 if  Follow_state == False and lead_car_pos[0][0] < ego_state[0]:
                     dir_path ='C:\\Users\\User\\Desktop\\CarlaSimulator\\PythonClient\\MotionPlannerCourse4FinalProject'
                     os.chdir(dir_path)

@@ -1103,7 +1103,7 @@ def exec_waypoint_nav_demo(args):
             predicted_throttle = THROTTLE*THROTTLE_MAX*0.5
             if predicted_steering < 0:
                 #predicted_steering = int(map(predicted_steering, -1, 0, 1365, 2047.5))
-                predicted_steering = 1365+(1365-2047.5)*predicted_steering*3.3 # map it betwwen 0.3-0 - > 3.3
+                predicted_steering = 2047.5-(1365-2047.5)*predicted_steering*3.3 # map it betwwen 0.3-0 - > 3.3
             elif predicted_steering > 0:
                 predicted_steering = 2047.5+(2730-2047.5)*predicted_steering*3.3
             else:
