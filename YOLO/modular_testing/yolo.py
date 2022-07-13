@@ -21,25 +21,10 @@ def get_distance_to_object(depth, x, y):
 
     return distance
 
-# def display(img, classes, indexes, boxes, class_ids, confidences):
-#     cv.imshow("Image", img)
-#     font = cv.FONT_HERSHEY_PLAIN  ### font of predicting box text
-#     colors = np.random.uniform(0, 255, size=(len(boxes), 3))   ### color of predicting boxes  # generating colors for each object for later plotting
-#     print(len(indexes))
-#     if len(indexes) > 0:
-#         for i in indexes.flatten():
-#             x, y, w, h = boxes[i]
-#             label = str(classes[class_ids[i]])   ### predicting result class
-#             confidence = str(round(confidences[i], 2))   ### predicting result's confidence on the object
-#             color = colors[i]  ### yolo box's color for different objects
-#             cv.rectangle(img, (x, y), (x + w, y + h), color, 2)  ### yolo predicting box (rectangle)
-#             cv.putText(img, label + " " + confidence, (x, y + 400), font, 2, color, 2)  ### text on yolo predicting box (rectangle) which is class+confidence
-
 def inference(img, classes, depth):
     net = cv.dnn.readNetFromDarknet("yolov4-tiny-custom-test.cfg",
                                 r"yolov4-tiny-custom_last.weights")
 
-    #img = cv2.cvtColor(img, cv2.COLOR_RGBA2RGB)
     height, width, channels = img.shape
 
     blob = cv.dnn.blobFromImage(img, 1 / 255, (416, 416), (0, 0, 0), swapRB=True, crop=False)  # create 4D blob
@@ -88,5 +73,4 @@ def inference(img, classes, depth):
 
     indexes = cv.dnn.NMSBoxes(boxes, confidences, .8, .4)
 
-    #display(img, classes, indexes, boxes, class_ids, confidences)
     return class_ids, distances, indexes, boxes, confidences, classes

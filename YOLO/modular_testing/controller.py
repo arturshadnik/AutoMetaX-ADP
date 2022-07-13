@@ -16,7 +16,6 @@ def collect_image(cap):
         return frame
 
 def display(img, classes, indexes, boxes, class_ids, confidences, depths):
-    # cv.imshow("Image", img)
     font = cv.FONT_HERSHEY_PLAIN  ### font of predicting box text
     colors = np.random.uniform(0, 255, size=(len(boxes), 3))   ### color of predicting boxes  # generating colors for each object for later plotting
     if len(indexes) > 0:
@@ -29,7 +28,6 @@ def display(img, classes, indexes, boxes, class_ids, confidences, depths):
             cv.rectangle(img, (x, y), (x + w, y + h), color, 2)  ### yolo predicting box (rectangle)
             cv.putText(img, label + " " + confidence, (x, y + 400), font, 2, color, 2)  ### text on yolo predicting box (rectangle) which is class+confidence
             cv.putText(img, label2, (x + 200, y + 400), font, 2, color, 2)  ### text on yolo predicting box (rectangle) which is class+confidence
-
 
     cv.imshow("Image", img)
 
