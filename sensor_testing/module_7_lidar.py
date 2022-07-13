@@ -1049,9 +1049,9 @@ class CarlaThread(threading.Thread):
                     detection_array = detection_queue.get()
                     #print(np.shape(detection_array))
                     #np.savetxt('D:/ADP/lidar_testing/outputs/data_binary{}.csv'.format(time.strftime("%Y%m%d%H%M%S", time.localtime())), detection_array, delimiter = ',')
-
+                    detection_array[1,100] = 0
                     if lead_car_pos[1][0] != 0:
-                        if lead_car_velocity < 0.3*max_speed and detection_array[1,100] == 0: # if the leading vehicle speed is lower than 25(7), we need overtake
+                        if detection_array[1,100] == 0: # if the leading vehicle speed is lower than 25(7), we need overtake
                             Follow_state = False
                             print("Follow state = False")
                             closest_len, closest_index = behavioural_planner.get_closest_index(waypoints, ego_state)
