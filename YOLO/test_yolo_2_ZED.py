@@ -70,33 +70,6 @@ def main():
     
         layerOutputs = net.forward(output_layers_name)
     
-        ### Showing information on the screen
-        """
-        boxes = []
-        confidences = []
-        class_ids = []
-    
-        for output in layerOutputs:
-            for detection in output:
-                score = detection[5:]
-                class_id = np.argmax(score)
-                confidence = score[class_id]
-                if confidence > 0.7: #0.7  # Object detected
-                    center_x = int(detection[0] * width)
-                    center_y = int(detection[1] * height)
-                    w = int(detection[2] * width)
-                    h = int(detection[3] * height)
-    
-                    # Rectangle coordinates
-                    x = int(center_x - w / 2)
-                    y = int(center_y - h / 2)
-                    boxes.append([x, y, w, h])
-                    confidences.append((float(confidence)))
-                    class_ids.append(class_id)
-    
-        indexes = cv2.dnn.NMSBoxes(boxes, confidences, .5, .4)
-        """
-    
         boxes = []
         confidences = []
         class_ids = []
@@ -128,11 +101,7 @@ def main():
                     class_ids.append(class_id)
 
         indexes = cv2.dnn.NMSBoxes(boxes, confidences, .8, .4)
-        ### idxs = cv2.dnn.NMSBoxes(boxes, confidences, SCORE_THRESHOLD, IOU_THRESHOLD)
-        ### indexes = cv2.dnn.NMSBoxes(boxes, confidences,score_threshold,nms_threshold,top_k=1)
-        ### nms_threshold: the IOU (Intersection over Union between different overlapping predicting boxes) threshold used in non-maximum suppression. Reducing this value will make it easier to remove redundant detections.
-        ### How cv2.dnn.NMSBoxes works?  https://stackoverflow.com/questions/66701910/why-nmsboxes-is-not-eleminating-multiple-bounding-boxes
-    
+      
         font = cv2.FONT_HERSHEY_PLAIN  ### font of predicting box text
         colors = np.random.uniform(0, 255, size=(len(boxes), 3))   ### color of predicting boxes  # generating colors for each object for later plotting
         if len(indexes) > 0:
@@ -148,7 +117,7 @@ def main():
         if cv2.waitKey(1) == ord('q'):   ###press "q" to quit opencv
             break
     
-    cap.release()
+    #cap.release()
     cv2.destroyAllWindows()
     zed.close()
 main()

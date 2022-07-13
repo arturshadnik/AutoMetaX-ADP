@@ -41,7 +41,7 @@ import sys
 import subprocess
 import threading
 from queue import Queue
-import sensorfunctions as sensor
+import sensorfunctions as sensors
 
 # Script level imports
 sys.path.append(os.path.abspath(sys.path[0] + '/..'))
@@ -143,6 +143,7 @@ lidar_queue = Queue()
 lidar_bins = np.arange(361)
 lidar_field = np.zeros((1, 361))
 lidar_threshold = 1500
+detection_queue = Queue()
 
 class LidarThread(threading.Thread):
     def run(self):
@@ -155,10 +156,10 @@ class LidarThread(threading.Thread):
   
 class ControlThread(threading.Thread):
     def run(self):
-        vid = cv.VideoCapture(0)
+        #vid = cv.VideoCapture(0)
 
         global lidar_field
-        #zed = sensor.initialize_camera()
+        zed = sensors.initialize_camera()
         # Initialize raw data storage array
         lidar_field_raw = np.zeros((2, 361))
         
@@ -181,24 +182,24 @@ class ControlThread(threading.Thread):
             lidar_field = np.fliplr(lidar_field_raw)
             field = np.transpose(lidar_field)
             
-            
-            ret, frame = vid.read()
-            #image, depth = sensor.capture_frame(zed)
+            #ret, frame = vid.read()
+            image, depth = sensors.capture_frame(zed)
+            frame = sensors.get_RGB_image(image)
             print("tired to take an image")
             #if camera working, beging data collection
-            if ret == True:
-            #     cv.imshow('image', frame)
-                print("took an image")
+            #if ret == True:
+            cv.imshow('image', frame)
+            # print("took an image")
             if cv.waitKey(1) & 0xFF == ord('q'): #exit using "q"
-                vid.release()
-                #sensor.close_camera(zed)
+                #vid.release()
+                sensors.close_camera(zed)
                 cv.destroyAllWindows()
                 break
             #call dummy controller, returns an 2x360 array of [distance, flag]
             lidar_field_binary = ControlThread.controller_dummy(field, lidar_field)
-            
+            detection_queue.put(lidar_field_binary)
             #save each lidar array, only do this for testing, not in production
-            np.savetxt('D:/ADP/lidar_testing/outputs/data_binary{}.csv'.format(time.strftime("%Y%m%d%H%M%S", time.localtime())), lidar_field_binary, delimiter = ',')
+            #np.savetxt('D:/ADP/lidar_testing/outputs/data_binary{}.csv'.format(time.strftime("%Y%m%d%H%M%S", time.localtime())), lidar_field_binary, delimiter = ',')
     
     #replace this with whatever controller is needed
     def controller_dummy(field, lidar_field):
@@ -206,10 +207,10 @@ class ControlThread(threading.Thread):
         lidar_field_binary = lidar_field
         while i < 361:
             if field[i,0] > 0 and field[i,0] < 1500:
-                print("detected")
+                #print("detected")
                 lidar_field_binary[1, i] = 1
             else:
-                print("not detected")
+                #print("not detected")
                 lidar_field_binary[1, i] = 0
             i += 1
 
@@ -825,8 +826,8 @@ class CarlaThread(threading.Thread):
                     #cv.imshow("Image", image)
                     try: #get bounding box around object of interest
                         box_max_height, box_min_height, box_max_width, box_min_width = get_object_roi(seg_image, label)
-                        cv.rectangle(image, (box_min_width, box_min_height),(box_max_width,box_max_height), (0,0,0), 2)
-                        cv.imshow("image",image)
+                        # cv.rectangle(image, (box_min_width, box_min_height),(box_max_width,box_max_height), (0,0,0), 2)
+                        # cv.imshow("image",image)
                     except TypeError as e:
                         print("Error calling get_object_roi function: {}".format(e), file = sys.stderr)
                         HasVision = False
@@ -1045,8 +1046,12 @@ class CarlaThread(threading.Thread):
                     #if lead_car_distance < look_ahead_dist-10:
                     max_speed = 9 # 9 
 
+                    detection_array = detection_queue.get()
+                    #print(np.shape(detection_array))
+                    #np.savetxt('D:/ADP/lidar_testing/outputs/data_binary{}.csv'.format(time.strftime("%Y%m%d%H%M%S", time.localtime())), detection_array, delimiter = ',')
+
                     if lead_car_pos[1][0] != 0:
-                        if lead_car_velocity < 0.3*max_speed : # if the leading vehicle speed is lower than 25(7), we need overtake
+                        if lead_car_velocity < 0.3*max_speed and detection_array[1,100] == 0: # if the leading vehicle speed is lower than 25(7), we need overtake
                             Follow_state = False
                             print("Follow state = False")
                             closest_len, closest_index = behavioural_planner.get_closest_index(waypoints, ego_state)
