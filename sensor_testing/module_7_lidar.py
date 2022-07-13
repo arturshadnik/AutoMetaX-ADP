@@ -159,7 +159,7 @@ class ControlThread(threading.Thread):
         #vid = cv.VideoCapture(0)
 
         global lidar_field
-        zed = sensors.initialize_camera()
+        #zed = sensors.initialize_camera()
         # Initialize raw data storage array
         lidar_field_raw = np.zeros((2, 361))
         
@@ -183,18 +183,18 @@ class ControlThread(threading.Thread):
             field = np.transpose(lidar_field)
             
             #ret, frame = vid.read()
-            image, depth = sensors.capture_frame(zed)
-            frame = sensors.get_RGB_image(image)
-            print("tired to take an image")
+            #image, depth = sensors.capture_frame(zed)
+            #frame = sensors.get_RGB_image(image)
+            #print("tired to take an image")
             #if camera working, beging data collection
             #if ret == True:
-            cv.imshow('image', frame)
-            # print("took an image")
-            if cv.waitKey(1) & 0xFF == ord('q'): #exit using "q"
-                #vid.release()
-                sensors.close_camera(zed)
-                cv.destroyAllWindows()
-                break
+            # cv.imshow('image', frame)
+            # # print("took an image")
+            # if cv.waitKey(1) & 0xFF == ord('q'): #exit using "q"
+            #     #vid.release()
+            #     sensors.close_camera(zed)
+            #     cv.destroyAllWindows()
+            #     break
             #call dummy controller, returns an 2x360 array of [distance, flag]
             lidar_field_binary = ControlThread.controller_dummy(field, lidar_field)
             detection_queue.put(lidar_field_binary)
