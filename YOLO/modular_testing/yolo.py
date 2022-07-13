@@ -1,5 +1,5 @@
 from ctypes import sizeof
-import cv2
+import cv2 as cv
 import numpy as np
 import pyzed.sl as sl
 #import sensorfunctions as sensors
@@ -15,20 +15,34 @@ def initialize():
             'Curved road sign']
     return classes
 
-def get_distance_to_object(depth, x, y): #Placeholder for actual depth sensor
+def get_distance_to_object(depth, x, y):
 
     err, distance = depth.get_value(x, y)
 
     return distance
 
+# def display(img, classes, indexes, boxes, class_ids, confidences):
+#     cv.imshow("Image", img)
+#     font = cv.FONT_HERSHEY_PLAIN  ### font of predicting box text
+#     colors = np.random.uniform(0, 255, size=(len(boxes), 3))   ### color of predicting boxes  # generating colors for each object for later plotting
+#     print(len(indexes))
+#     if len(indexes) > 0:
+#         for i in indexes.flatten():
+#             x, y, w, h = boxes[i]
+#             label = str(classes[class_ids[i]])   ### predicting result class
+#             confidence = str(round(confidences[i], 2))   ### predicting result's confidence on the object
+#             color = colors[i]  ### yolo box's color for different objects
+#             cv.rectangle(img, (x, y), (x + w, y + h), color, 2)  ### yolo predicting box (rectangle)
+#             cv.putText(img, label + " " + confidence, (x, y + 400), font, 2, color, 2)  ### text on yolo predicting box (rectangle) which is class+confidence
+
 def inference(img, classes, depth):
-    net = cv2.dnn.readNetFromDarknet("yolov4-tiny-custom-test.cfg",
+    net = cv.dnn.readNetFromDarknet("yolov4-tiny-custom-test.cfg",
                                 r"yolov4-tiny-custom_last.weights")
 
     #img = cv2.cvtColor(img, cv2.COLOR_RGBA2RGB)
     height, width, channels = img.shape
 
-    blob = cv2.dnn.blobFromImage(img, 1 / 255, (416, 416), (0, 0, 0), swapRB=True, crop=False)  # create 4D blob
+    blob = cv.dnn.blobFromImage(img, 1 / 255, (416, 416), (0, 0, 0), swapRB=True, crop=False)  # create 4D blob
     ### input to the network is a so-called blob object. A blob is a 4D numpy array object (images, channels, width, height).
     ### USing blob function of opencv to preprocess image
 
@@ -66,12 +80,13 @@ def inference(img, classes, depth):
                 #if object of interest spotted, determine distance
                 if class_id ==0 or class_id == 4 or class_id == 5 or class_id == 6 or class_id == 7:
                     distance_to_object = get_distance_to_object(depth, center_x, center_y) #REPLACE img with depth from ZED
-                    print(distance_to_object)
+                    #print(distance_to_object)
                     distances.append(distance_to_object)
                 boxes.append([x, y, w, h])
                 confidences.append((float(confidence)))
                 class_ids.append(class_id)
 
-    indexes = cv2.dnn.NMSBoxes(boxes, confidences, .8, .4)
+    indexes = cv.dnn.NMSBoxes(boxes, confidences, .8, .4)
 
+    #display(img, classes, indexes, boxes, class_ids, confidences)
     return class_ids, distances, indexes, boxes, confidences, classes
