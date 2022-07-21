@@ -1,5 +1,6 @@
 from __future__ import print_function
 from __future__ import division
+from unittest.util import _count_diff_hashable
 #from typing_extensions import Self
 #!/usr/bin/env python3
 
@@ -206,7 +207,7 @@ class ControlThread(threading.Thread):
         i = 0
         lidar_field_binary = lidar_field
         while i < 361:
-            if field[i,0] > 0 and field[i,0] < 1500:
+            if field[i,0] > 0 and field[i,0] < 200:
                 #print("detected")
                 lidar_field_binary[1, i] = 1
             else:
@@ -423,9 +424,13 @@ def get_object_roi(image, label):
 
 #measure distance to object of interest
 def measure_distance(depth_image, point_x, point_y):
-    #print(point_x, point_y)
-    distance = depth_image[point_y, point_x]
-    return distance
+    if point_x < 500:
+        HasVision = False
+        distance = 100
+    else:
+        distance = depth_image[point_y, point_x]
+        HasVision = True
+    return distance, HasVision
 
 
 class CarlaThread(threading.Thread):
@@ -826,20 +831,21 @@ class CarlaThread(threading.Thread):
                     #cv.imshow("Image", image)
                     try: #get bounding box around object of interest
                         box_max_height, box_min_height, box_max_width, box_min_width = get_object_roi(seg_image, label)
-                        # cv.rectangle(image, (box_min_width, box_min_height),(box_max_width,box_max_height), (0,0,0), 2)
-                        # cv.imshow("image",image)
+                        cv.rectangle(image, (box_min_width, box_min_height),(box_max_width,box_max_height), (0,0,0), 2)
+                        cv.imshow("image",image)
                     except TypeError as e:
                         print("Error calling get_object_roi function: {}".format(e), file = sys.stderr)
                         HasVision = False
+                    
                     if HasVision == True:
                         try: #get ceterpoint of ROI, draw crosshair, get distance from centerpoint to camera
                             average_width = int((box_max_width + box_min_width) / 2)
                             average_height = int((box_max_height + box_min_height) / 2)
-
+                            
                             #cv.line(image, (average_width - 10,average_height) , (average_width + 10,average_height), (0,255,0), 1)
                             #cv.line(image, (average_width,average_height - 10) , (average_width,average_height + 10), (0,255,0), 1)
                             #cv.imshow("image", seg_image)
-                            distance = measure_distance(depth_image, average_width, average_height) 
+                            distance, HasVision = measure_distance(depth_image, average_width, average_height) 
                             #print("Distance to object is: {}m".format(distance))
 
                         except Exception as e:
@@ -972,12 +978,14 @@ class CarlaThread(threading.Thread):
                             #print("leading vehicle speed: {}m/s".format(open_loop_speed-(temp-distance)/(current_timestamp - prev_timestamp)))
                             #lead_car_velocity= open_loop_speed-(temp-distance)/(current_timestamp - prev_timestamp) 
                     
-                    if distance<look_ahead_dist and HasVision:
+                    if distance-10<look_ahead_dist and HasVision:
                     #if HasVision:
-                                for i in range(10):
+                                for i in range(12):
                                     #agent_id = agent.id
                                     #if agent.HasField('vehicle'):
                                         lead_car_velocity=open_loop_speed-(temp-distance)/(current_timestamp - prev_timestamp)
+                                        if lead_car_velocity < 0:
+                                            lead_car_velocity=0
                                         #print("lead car velocity:{}m/s".format(lead_car_velocity))
                                         temp=distance 
                                     #for i in range(10): # predict next five steps with constant velocity model
@@ -1049,15 +1057,21 @@ class CarlaThread(threading.Thread):
                     detection_array = detection_queue.get()
                     #print(np.shape(detection_array))
                     #np.savetxt('D:/ADP/lidar_testing/outputs/data_binary{}.csv'.format(time.strftime("%Y%m%d%H%M%S", time.localtime())), detection_array, delimiter = ',')
-                    detection_array[1,100] = 0
+                    count = 0
+                    for i in range(210,330):
+                        if detection_array[1,i] == 1:
+                            count = count + 1
+                    
+                    
                     if lead_car_pos[1][0] != 0:
-                        if detection_array[1,100] == 0: # if the leading vehicle speed is lower than 25(7), we need overtake
+                        if count < 30: 
                             Follow_state = False
                             print("Follow state = False")
                             closest_len, closest_index = behavioural_planner.get_closest_index(waypoints, ego_state)
                             goal_index = bp.get_goal_index(waypoints, ego_state, closest_len, closest_index)
-                            goal_state = waypoints[goal_index]
-                            print(goal_state)
+                            goal_state = waypoints[goal_index+1]
+                            goal_state[2] = goal_state[2]*1.3
+                            #print(waypoints)
                         else:
                             Follow_state = True
                             print("Follow state = True")

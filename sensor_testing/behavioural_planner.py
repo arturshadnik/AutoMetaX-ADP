@@ -23,7 +23,7 @@ STAY_STOPPED = 2
 # Stop speed threshold
 STOP_THRESHOLD = 0.02
 # Number of cycles before moving from stop sign.
-STOP_COUNTS = 2
+STOP_COUNTS = 1
 
 class BehaviouralPlanner:
     def __init__(self, lookahead, stopsign_fences, lead_vehicle_lookahead):
