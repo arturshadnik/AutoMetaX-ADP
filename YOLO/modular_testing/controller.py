@@ -3,11 +3,14 @@ import cv2 as cv
 import yolo
 import sensorfunctions as sensors
 
+#use this function if testing with a regular camera, otherwise use initialization function in sensorfunctions library
 def initialize_camera():
     cap = cv.VideoCapture(0)
     cap.set(cv.CAP_PROP_FRAME_WIDTH, 1280)
     cap.set(cv.CAP_PROP_FRAME_HEIGHT, 720)
     return cap
+
+#use this function if testing with a regular camera, otherwise use collection function in sensorfunctions library
 
 def collect_image(cap):
     ret, frame = cap.read()

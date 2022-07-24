@@ -101,7 +101,7 @@ def main():
                     class_ids.append(class_id)
 
         indexes = cv2.dnn.NMSBoxes(boxes, confidences, .8, .4)
-      
+        print(indexes)
         font = cv2.FONT_HERSHEY_PLAIN  ### font of predicting box text
         colors = np.random.uniform(0, 255, size=(len(boxes), 3))   ### color of predicting boxes  # generating colors for each object for later plotting
         if len(indexes) > 0:
