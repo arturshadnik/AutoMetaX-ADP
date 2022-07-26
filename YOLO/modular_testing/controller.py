@@ -29,7 +29,7 @@ def display(img, classes, indexes, boxes, class_ids, confidences, depths):
             confidence = str(round(confidences[i], 2))   ### predicting result's confidence on the object
             color = colors[i]  ### yolo box's color for different objects
             cv.rectangle(img, (x, y), (x + w, y + h), color, 2)  ### yolo predicting box (rectangle)
-            cv.putText(img, label + " " + confidence, (x, y + 400), font, 2, color, 2)  ### text on yolo predicting box (rectangle) which is class+confidence
+            cv.putText(img, label + " " + confidence, (x - 100, y + 600), font, 2, color, 2)  ### text on yolo predicting box (rectangle) which is class+confidence
             cv.putText(img, label2, (x + 200, y + 400), font, 2, color, 2)  ### text on yolo predicting box (rectangle) which is class+confidence
 
     cv.imshow("Image", img)
@@ -44,8 +44,8 @@ def main():
         image = sensors.get_RGB_image(image_zed)
 
         objects, depths, indexes, boxes, confidences, classes = yolo.inference(image, classes, depth)
-        print(objects)
-        print(depths)
+        #print(objects)
+        #print(depths)
         display(image, classes, indexes, boxes, objects, confidences, depths)
         if cv.waitKey(1) == ord('q'):   ###press "q" to quit opencv
             break

@@ -1,3 +1,4 @@
+from ast import Pass
 from ctypes import sizeof
 import cv2 as cv
 import numpy as np
@@ -18,7 +19,10 @@ def initialize():
 def get_distance_to_object(depth, x, y):
 
     err, distance = depth.get_value(x, y)
-
+    try: 
+        distance = int(distance)
+    except:
+        pass
     return distance
 
 def inference(img, classes, depth):
