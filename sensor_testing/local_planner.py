@@ -3,16 +3,6 @@
 # This work is licensed under the terms of the MIT license.
 # For a copy, see <https://opensource.org/licenses/MIT>.
 
-"""
-Assignments Solution Author: Engin Bozkurt
-Motion Planning for Self-Driving Cars
-Aug 24, 2019
-"""
-
-# Author: Ryan De Iaco
-# Additional Comments: Carlos Wang
-# Date: October 29, 2018
-
 import numpy as np
 import copy
 import path_optimizer
@@ -35,14 +25,6 @@ class LocalPlanner:
             velocity_planner.VelocityPlanner(time_gap, a_max, slow_speed, 
                                              stop_line_buffer)
 
-    ######################################################
-    ######################################################
-    # MODULE 7: GOAL STATE COMPUTATION
-    #   Read over the function comments to familiarize yourself with the
-    #   arguments and necessary variables to return. Then follow the TODOs
-    #   (top-down) and use the surrounding comments as a guide.
-    ######################################################
-    ######################################################
     # Computes the goal state set from a given goal position. This is done by
     # laterally sampling offsets from the goal location along the direction
     # perpendicular to the goal yaw of the ego vehicle.
@@ -91,14 +73,6 @@ class LocalPlanner:
         # the previous index instead.
         # To do this, compute the delta_x and delta_y values between
         # consecutive waypoints, then use the np.arctan2() function.
-        # TODO: INSERT YOUR CODE BETWEEN THE DASHED LINES
-        # ------------------------------------------------------------------
-        # if ...
-        # delta_x = ...
-        # delta_y = ...
-        # else: ...
-        # ...
-        # heading = ...
         if goal_index < len(waypoints)-1:
             delta_x = waypoints[goal_index+1][0] - waypoints[goal_index][0]
             delta_y = waypoints[goal_index+1][1] - waypoints[goal_index][1]
@@ -106,8 +80,6 @@ class LocalPlanner:
             delta_x = waypoints[goal_index][0] - waypoints[goal_index-1][0]
             delta_y = waypoints[goal_index][1] - waypoints[goal_index-1][1]
         heading = np.arctan2(delta_y,delta_x)
-
-        # ------------------------------------------------------------------
 
         # Compute the center goal state in the local frame using 
         # the ego state. The following code will transform the input
@@ -117,35 +89,21 @@ class LocalPlanner:
 
         # Translate so the ego state is at the origin in the new frame.
         # This is done by subtracting the ego_state from the goal_state_local.
-        # TODO: INSERT YOUR CODE BETWEEN THE DASHED LINES
-        # ------------------------------------------------------------------
-        # goal_state_local[0] -= ... 
-        # goal_state_local[1] -= ... 
         goal_state_local[0] -= ego_state[0] 
         goal_state_local[1] -= ego_state[1] 
-        # ------------------------------------------------------------------
 
         # Rotate such that the ego state has zero heading in the new frame.
         # Recall that the general rotation matrix is [cos(theta) -sin(theta)
         #                                             sin(theta)  cos(theta)]
         # and that we are rotating by -ego_state[2] to ensure the ego vehicle's
         # current yaw corresponds to theta = 0 in the new local frame.
-        # TODO: INSERT YOUR CODE BETWEEN THE DASHED LINES
-        # ------------------------------------------------------------------
-        # goal_x = ...
-        # goal_y = ...
         theta = -ego_state[2]
         goal_x = goal_state_local[0] * cos(theta) - goal_state_local[1] * sin(theta)
         goal_y = goal_state_local[0] * sin(theta) + goal_state_local[1] * cos(theta)
-        # ------------------------------------------------------------------
 
         # Compute the goal yaw in the local frame by subtracting off the 
         # current ego yaw from the heading variable.
-        # TODO: INSERT YOUR CODE BETWEEN THE DASHED LINES
-        # ------------------------------------------------------------------
-        # goal_t = ...
         goal_t = heading - ego_state[2]
-        # ------------------------------------------------------------------
 
         # Velocity is preserved after the transformation.
         goal_v = goal_state[2]
@@ -169,14 +127,8 @@ class LocalPlanner:
             # Compute the projection of the lateral offset along the x
             # and y axis. To do this, multiply the offset by cos(goal_theta + pi/2)
             # and sin(goal_theta + pi/2), respectively.
-            # TODO: INSERT YOUR CODE BETWEEN THE DASHED LINES
-            # ------------------------------------------------------------------
-            # x_offset = ...
-            # y_offset = ...
             x_offset = offset * cos(goal_t + pi/2)
             y_offset = offset * sin(goal_t + pi/2)
-            # ------------------------------------------------------------------
-
             goal_state_set.append([goal_x + x_offset, 
                                    goal_y + y_offset, 
                                    goal_t, 
