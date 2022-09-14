@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ChangeListManager">
+    <list default="true" id="ccf5e028-bc50-4913-b237-ac34ca4f8718" name="Default Changelist" comment="">
+      <change beforePath="$PROJECT_DIR$/behavioural_planner.py" beforeDir="false" afterPath="$PROJECT_DIR$/behavioural_planner.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/collision_checker.py" beforeDir="false" afterPath="$PROJECT_DIR$/collision_checker.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/controller2d.py" beforeDir="false" afterPath="$PROJECT_DIR$/controller2d.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/course4_test_waypoints.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/course4_test_waypoints_original_speed.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/course4_waypoints.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/local_planner.py" beforeDir="false" afterPath="$PROJECT_DIR$/local_planner.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/module_7_lidar.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/path_optimizer.py" beforeDir="false" afterPath="$PROJECT_DIR$/path_optimizer.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/temp.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/velocity_planner.py" beforeDir="false" afterPath="$PROJECT_DIR$/velocity_planner.py" afterDir="false" />
+    </list>
+    <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/.." />
+  </component>
+  <component name="ProjectId" id="2Em5hbGmjbl6QKnMm5GbitQJZwr" />
+  <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
+  <component name="PropertiesComponent">
+    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
+  </component>
+  <component name="RunDashboard">
+    <option name="ruleStates">
+      <list>
+        <RuleState>
+          <option name="name" value="ConfigurationTypeDashboardGroupingRule" />
+        </RuleState>
+        <RuleState>
+          <option name="name" value="StatusDashboardGroupingRule" />
+        </RuleState>
+      </list>
+    </option>
+  </component>
+  <component name="SvnConfiguration">
+    <configuration />
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="ccf5e028-bc50-4913-b237-ac34ca4f8718" name="Default Changelist" comment="" />
+      <created>1663188038857</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1663188038857</updated>
+    </task>
+    <servers />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+</project>
