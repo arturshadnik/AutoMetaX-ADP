@@ -831,8 +831,8 @@ class CarlaThread(threading.Thread):
                     #cv.imshow("Image", image)
                     try: #get bounding box around object of interest
                         box_max_height, box_min_height, box_max_width, box_min_width = get_object_roi(seg_image, label)
-                        cv.rectangle(image, (box_min_width, box_min_height),(box_max_width,box_max_height), (0,0,0), 2)
-                        cv.imshow("image",image)
+                        #cv.rectangle(image, (box_min_width, box_min_height),(box_max_width,box_max_height), (0,0,0), 2)
+                        #cv.imshow("image",image)
                     except TypeError as e:
                         print("Error calling get_object_roi function: {}".format(e), file = sys.stderr)
                         HasVision = False

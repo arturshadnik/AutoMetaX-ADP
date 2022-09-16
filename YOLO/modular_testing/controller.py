@@ -30,7 +30,7 @@ def display(img, classes, indexes, boxes, class_ids, confidences, depths):
             color = colors[i]  ### yolo box's color for different objects
             cv.rectangle(img, (x, y), (x + w, y + h), color, 2)  ### yolo predicting box (rectangle)
             cv.putText(img, label + " " + confidence, (x, y + 400), font, 2, color, 2)  ### text on yolo predicting box (rectangle) which is class+confidence
-            cv.putText(img, label2, (x + 200, y + 400), font, 2, color, 2)  ### text on yolo predicting box (rectangle) which is class+confidence
+            cv.putText(img, label2, (x + 200, y - 100), font, 2, color, 2)  ### text on yolo predicting box (rectangle) which is class+confidence
 
     cv.imshow("Image", img)
 
