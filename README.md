@@ -39,10 +39,10 @@ For more details, please refer to our final report or leave an email at xza213@s
 
 # Future Plan
 1. Sensors
-•	The ZED Camera has bad hardware connection, which might lead to danger actions due to lose of camera data during driving.
-•	The RPLiDAR can only generate 2D map. To have a better understanding of the environment, a LiDAR that maps 3D environment is required to detect objects lower than the ego vehicle.
-•	One extra camera should be added at the back of our ego vehicle to detect the states of approaching vehicle such as velocity and distance.
-•	Sensor Fusion algorithm should be added to combine stereo camera and Lidar to reduce variance and noise. 
+ i) The ZED Camera has bad hardware connection, which might lead to danger actions due to lose of camera data during driving.
+ii) The RPLiDAR can only generate 2D map. To have a better understanding of the environment, a LiDAR that maps 3D environment is required to detect objects lower than the ego vehicle.
+iii) One extra camera should be added at the back of our ego vehicle to detect the states of approaching vehicle such as velocity and distance.
+iv) Sensor Fusion algorithm should be added to combine stereo camera and Lidar to reduce variance and noise. 
 
 2. Perception
 •   Broaden the YOLO dataset with images of all classes of objects.
