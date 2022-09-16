@@ -5,9 +5,13 @@ Supervisor: Dr. Rad
 
 # Team Members
 Xilun Zhang
+
 Artur Shadnik
+
 Delin Ma
+
 Zhen Li
+
 Jaehong Kim
 
 # Demonstration Video (Youtube)
