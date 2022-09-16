@@ -1,9 +1,4 @@
 #!/usr/bin/env python3
-"""
-Assignments Solution Author: Engin Bozkurt
-Motion Planning for Self-Driving Cars
-Aug 24, 2019
-"""
 
 """
 2D Controller Class to be used for the CARLA waypoint follower demo.
@@ -98,11 +93,6 @@ class Controller2D(object):
         steer_output    = 0
         brake_output    = 0
 
-        ######################################################
-        ######################################################
-        # MODULE 7: DECLARE USAGE VARIABLES HERE
-        ######################################################
-        ######################################################
         """
             Use 'self.vars.create_var(<variable name>, <default value>)'
             to create a persistent variable (not destroyed at each iteration).
@@ -157,11 +147,6 @@ class Controller2D(object):
                     brake_output    : Brake output (0 to 1)
             """
 
-            ######################################################
-            ######################################################
-            # MODULE 7: IMPLEMENTATION OF LONGITUDINAL CONTROLLER HERE
-            ######################################################
-            ######################################################
             """
                 Implement a longitudinal controller here. Remember that you can
                 access the persistent variables declared above here. For
@@ -204,11 +189,6 @@ class Controller2D(object):
             # assignment, as the car will naturally slow down over time.
             brake_output    = 0
 
-            ######################################################
-            ######################################################
-            # MODULE 7: IMPLEMENTATION OF LATERAL CONTROLLER HERE
-            ######################################################
-            ######################################################
             """
                 Implement a lateral controller here. Remember that you can
                 access the persistent variables declared above here. For
@@ -252,23 +232,10 @@ class Controller2D(object):
             steer_output = max(steer_output,-1.22)
             #print("steer_output: ",steer_output/3.1415926*180)
 
-            ######################################################
-            # SET CONTROLS OUTPUT
-            ######################################################
             self.set_throttle(throttle_output)  # in percent (0 to 1)
             self.set_steer(steer_output)        # in rad (-1.22 to 1.22)
             self.set_brake(brake_output)        # in percent (0 to 1)
             #print(throttle_output,steer_output)
 
-        ######################################################
-        ######################################################
-        # MODULE 7: STORE OLD VALUES HERE (ADD MORE IF NECESSARY)
-        ######################################################
-        ######################################################
-        """
-            Use this block to store old values (for example, we can store the
-            current x, y, and yaw values here using persistent variables for use
-            in the next iteration)
-        """
         self.vars.v_previous = v  # Store forward speed to be used in next step
         self.vars.t_previous = t  # Store forward speed to be used in next step

@@ -3,16 +3,6 @@
 # This work is licensed under the terms of the MIT license.
 # For a copy, see <https://opensource.org/licenses/MIT>.
 
-"""
-Assignments Solution Author: Engin Bozkurt
-Motion Planning for Self-Driving Cars
-Aug 24, 2019
-"""
-
-# Author: Ryan De Iaco
-# Additional Comments: Carlos Wang
-# Date: October 29, 2018
-
 import numpy as np
 from math import sin, cos, pi, sqrt
 
@@ -60,12 +50,6 @@ class VelocityPlanner:
         # stopped. Return the end velocity of the trajectory.
         return self._prev_trajectory[-1][2]
 
-    ######################################################
-    ######################################################
-    # MODULE 7: COMPUTE VELOCITY PROFILE
-    #   Read over the function comments to familiarize yourself with the
-    ######################################################
-    ######################################################
     # Takes a path, and computes a velocity profile to our desired speed.
     # - decelerate_to_stop denotes whether or not we need to decelerate to a
     #   stop line
@@ -479,14 +463,6 @@ class VelocityPlanner:
 
         return profile
 
-######################################################
-######################################################
-# MODULE 7: COMPUTE TOTAL DISTANCE WITH CONSTANT ACCELERATION
-#   Read over the function comments to familiarize yourself with the
-#   arguments and necessary variables to return. Then follow the TODOs
-#   (top-down) and use the surrounding comments as a guide.
-######################################################
-######################################################
 # Using d = (v_f^2 - v_i^2) / (2 * a), compute the distance
 # required for a given acceleration/deceleration.
 def calc_distance(v_i, v_f, a):
@@ -502,21 +478,8 @@ def calc_distance(v_i, v_f, a):
     """
     #pass
 
-    # TODO: INSERT YOUR CODE BETWEEN THE DASHED LINES
-    # ------------------------------------------------------------------
-    # d = ...
-    # return d
     return (v_f*v_f-v_i*v_i)/2/a
-    # ------------------------------------------------------------------
 
-######################################################
-######################################################
-# MODULE 7: COMPUTE FINAL SPEED WITH CONSTANT ACCELERATION
-#   Read over the function comments to familiarize yourself with the
-#   arguments and necessary variables to return. Then follow the TODOs
-#   (top-down) and use the surrounding comments as a guide.
-######################################################
-######################################################
 # Using v_f = sqrt(v_i^2 + 2ad), compute the final speed for a given
 # acceleration across a given distance, with initial speed v_i.
 # Make sure to check the discriminant of the radical. If it is negative,
@@ -534,12 +497,7 @@ def calc_final_speed(v_i, a, d):
     """
     pass
 
-    # TODO: INSERT YOUR CODE BETWEEN THE DASHED LINES
-    # ------------------------------------------------------------------
-    # v_f = ...
-    # return v_f
     temp = v_i*v_i+2*d*a
     if temp < 0: return 0.0000001
     else: return sqrt(temp)
-    # ------------------------------------------------------------------
 

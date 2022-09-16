@@ -3,16 +3,6 @@
 # This work is licensed under the terms of the MIT license.
 # For a copy, see <https://opensource.org/licenses/MIT>.
 
-"""
-Assignments Solution Author: Engin Bozkurt
-Motion Planning for Self-Driving Cars
-Aug 24, 2019
-"""
-
-# Author: Ryan De Iaco
-# Additional Comments: Carlos Wang
-# Date: October 29, 2018
-
 import numpy as np
 import scipy.optimize
 import scipy.integrate
@@ -24,14 +14,6 @@ class PathOptimizer:
         self._yf = 0.0
         self._tf = 0.0
 
-    ######################################################
-    ######################################################
-    # MODULE 7: PARAMETER OPTIMIZATION FOR POLYNOMIAL SPIRAL
-    #   Read over the function comments to familiarize yourself with the
-    #   arguments and necessary variables to return. Then follow the TODOs
-    #   (top-down) and use the surrounding comments as a guide.
-    ######################################################
-    ######################################################
     # Sets up the optimization problem to compute a spiral to a given
     # goal point, (xf, yf, tf).
     def optimize_spiral(self, xf, yf, tf):
@@ -78,35 +60,20 @@ class PathOptimizer:
         # As a result, their curvature needs to lie within [-0.5, 0.5].
         # The third variable is the arc length, it has no upper limit, and it
         # has a lower limit of the straight line arc length.
-        # TODO: INSERT YOUR CODE BETWEEN THE DASHED LINES
-        # ------------------------------------------------------------------
-        # bounds = ...
         bounds = ((-0.5, 0.5),(-0.5, 0.5),(sf_0, None))
         #bounds = ((-2, 2),(-2, 2),(sf_0, None))
-        # ------------------------------------------------------------------
 
         # Here we will call scipy.optimize.minimize to optimize our spiral.
         # The objective and gradient are given to you by self.objective, and
         # self.objective_grad. The bounds are computed above, and the inital
         # variables for the optimizer are set by p0. You should use the L-BFGS-B
         # optimization methods.
-        # TODO: INSERT YOUR CODE BETWEEN THE DASHED LINES
-        # ------------------------------------------------------------------
-        # res = scipy.optimize.minimize(...)
+
         res = scipy.optimize.minimize(self.objective,p0,method='L-BFGS-B',bounds=bounds,jac=self.objective_grad)
-        # ------------------------------------------------------------------
 
         spiral = self.sample_spiral(res.x)
         return spiral
 
-    ######################################################
-    ######################################################
-    # MODULE 7: COMPUTE LIST OF THETAS
-    #   Read over the function comments to familiarize yourself with the
-    #   arguments and necessary variables to return. Then follow the TODOs
-    #   (top-down) and use the surrounding comments as a guide.
-    ######################################################
-    ######################################################
     # This function computes the theta values for a given list of
     # arc lengths, and spiral parameters a, b, c, d.
     # Recall that the equation of a cubic spiral is
@@ -121,11 +88,6 @@ class PathOptimizer:
     def thetaf(self, a, b, c, d, s):
         #pass
 
-        # TODO: INSERT YOUR CODE BETWEEN THE DASHED LINES
-        # ------------------------------------------------------------------
-        # # Remember that a, b, c, d and s are lists
-        # ...
-        # thetas = ...
         a = np.array(a)
         b = np.array(b)
         c = np.array(c)
@@ -133,16 +95,7 @@ class PathOptimizer:
         s = np.array(s)
         thetas = a*s + b/2*s**2 + c/3*s**3 + d/4*s**4
         return thetas
-        # ------------------------------------------------------------------
 
-    ######################################################
-    ######################################################
-    # MODULE 7: SAMPLE SPIRAL PATH
-    #   Read over the function comments to familiarize yourself with the
-    #   arguments and necessary variables to return. Then follow the TODOs
-    #   (top-down) and use the surrounding comments as a guide.
-    ######################################################
-    ######################################################
     # This function samples the spiral along its arc length to generate
     # a discrete set of x, y, and theta points for a path.
     def sample_spiral(self, p):
@@ -184,23 +137,11 @@ class PathOptimizer:
         # Try to vectorize the code using numpy functions for speed if you can.
 
         # Try to vectorize the code using numpy functions for speed if you can.
-        # TODO: INSERT YOUR CODE BETWEEN THE DASHED LINES
-        # ------------------------------------------------------------------
-        # t_points = ...
-        # x_points = ...
-        # y_points = ...
-        # return [x_points, y_points, t_points]
         t_points = self.thetaf(a, b, c, d, s_points)
         x_points = scipy.integrate.cumtrapz(np.cos(t_points),s_points)
         y_points = scipy.integrate.cumtrapz(np.sin(t_points),s_points)
         return [x_points.tolist(), y_points.tolist(), t_points.tolist()]
         # ------------------------------------------------------------------
-
-    ######################################################
-    ######################################################
-    # BELOW ARE THE FUNCTIONS USED FOR THE OPTIMIZER.
-    ######################################################
-    ######################################################
 
     def objective(self, p):
         """
