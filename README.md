@@ -31,5 +31,6 @@ Jaehong Kim
     https://youtu.be/_xK3NnWSDJg 
 
 # Project Goal
-This project aims to improve the functionalities of a level-2 automated vehicle prototype and algorithms. The expected outcome is level-4 automation in ODD. The expected system architecture is shown in Figure 2. The main design criteria of this project are environment perception, high-level control (motion planning) and low-level vehicle control (lateral, longitudinal and speed).![image](https://user-images.githubusercontent.com/89050720/190730654-b212b879-591d-4dc2-9d29-50805dd70491.png)
+This project aims to improve the functionalities of a level-2 automated vehicle prototype and algorithms. The expected outcome is level-4 automation in ODD. The expected system architecture is shown in Figure 2. The main design criteria of this project are environment perception, high-level control (motion planning) and low-level vehicle control (lateral, longitudinal and speed).
+<img width="450" alt="image" src="https://user-images.githubusercontent.com/89050720/190730778-5ca351e4-9907-4bd8-982c-67247b646a22.png">
 
