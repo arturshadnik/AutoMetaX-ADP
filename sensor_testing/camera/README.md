@@ -1,0 +1,1 @@
+Scripts to test ZED and regular camera functions, as well as image filtering techniques. The implementation of the code in this module can be found in the final scripts for data collection as well as Carla control.
