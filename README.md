@@ -62,3 +62,23 @@ For more details, please refer to our final report or leave an email at xza213@s
 
 •   Ensure the perception system can detect incomplete objects for each class including two overlapping objects such as pedestrian holding a stop sign.
 
+3. Waypoints Tracking
+
+•	Behavior planners should take corresponding actions upon detecting traffic lights and speed signs.
+
+•	The system should provide better performance on object motion prediction. The current model we are using is constant velocity prediction model which is not realistic. A more comprehensive prediction model should be implemented such as using DNN and least square regression. 
+
+•	Auto-generate waypoints using lane navigation model, SLAM or A*/RRT Search. 
+
+4. Lane Tracking
+
+•	Filters need to be added to OpenCV to detect lanes under various weather conditions. 
+
+•	For the deep learning approach, more dataset was required to achieve a better performance.
+
+•	Optimize the transfer learning approach or PilotNet structure to cater specific testing environment.
+
+6. Vehicle Controllers
+
+•	Output signals from the low-level controllers must be adequately mapped for the microcontroller.
+
