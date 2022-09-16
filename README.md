@@ -39,6 +39,7 @@ For more details, please refer to our final report or leave an email at xza213@s
 
 # Future Plan
 1. Sensors
+
 •	The ZED Camera has bad hardware connection, which might lead to danger actions due to lose of camera data during driving.
 
 •	The RPLiDAR can only generate 2D map. To have a better understanding of the environment, a LiDAR that maps 3D environment is required to detect objects lower than the ego vehicle.
@@ -47,11 +48,13 @@ For more details, please refer to our final report or leave an email at xza213@s
 
 •	Sensor Fusion algorithm should be added to combine stereo camera and Lidar to reduce variance and noise. 
 
-
-
 2. Perception
+
 •   Broaden the YOLO dataset with images of all classes of objects.
+
 •   Broaden dataset to cater different driving environment such as urban road and indoor environment.
+
 •   Implemented Transfer Learning to our own network. Combine pre-trained network such as ImageNet and MobileNet with self-collected dataset.
+
 •   Ensure the perception system can detect incomplete objects for each class including two overlapping objects such as pedestrian holding a stop sign.
 
