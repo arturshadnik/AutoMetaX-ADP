@@ -17,21 +17,27 @@ Jaehong Kim
 # Demonstration Video (Youtube)
 
 1. CARLA Simulation with built-in Stereo Camera
+    
     https://youtu.be/icksM6xUL_o
     
 2. CARLA Simulation with HIL LiDAR
+    
     https://youtu.be/mxcCrYY6-Yc
     
 3. OpenCV Lane Navigation (Urban road environment) 
+    
     https://www.youtube.com/watch?v=K_LT5URJhMc
 
 4. PilotNet Lane Navigation (Urban road environment)
+    
     https://youtu.be/7JjLhPtkCg4
 
 5. PilotNet Lane Navigation with transfer learning (SFU Surrey Galleria 4)
+    
     https://youtu.be/7xk02w2fQjw
 
 6. Object Classification using ZED Camera (Yolo-v4-tiny)
+    
     https://youtu.be/_xK3NnWSDJg 
 
 # Project Goal
