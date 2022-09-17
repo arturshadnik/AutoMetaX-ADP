@@ -1,7 +1,7 @@
 # AutoMetaX-ADP
 SFU MSE capstone project Jan 2022-Aug 2022
 
-Supervisor: Dr. Rad
+Supervisor: Dr. Ahmad Rad
 
 # Team Members
 Xilun Zhang
@@ -84,7 +84,7 @@ For more details, please refer to our final report or leave an email at xza213@s
 
 •	Optimize the transfer learning approach or PilotNet structure to cater specific testing environment.
 
-6. Vehicle Controllers
+5. Vehicle Controllers
 
 •	Output signals from the low-level controllers must be adequately mapped for the microcontroller.
 
