@@ -95,7 +95,7 @@ def sobel(img_channel, orient='x', sobel_kernel=3):
  
   return sobel
  
-def threshold(channel, thresh=(200,255), thresh_type=cv2.THRESH_BINARY):
+def threshold(channel, thresh=(128,255), thresh_type=cv2.THRESH_BINARY):
   """
   Apply a threshold to the input channel
      

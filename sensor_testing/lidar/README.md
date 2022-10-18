@@ -1,0 +1,1 @@
+This module contains 3 implementations of the LiDAR sensor. test1.py and test2.py are implementation which are not deployable using the RP LiDAR due to its mode of operation. test3.py is a working implementation using the pre-compiled data collection function ultra_simple.exeÎ

@@ -7,22 +7,6 @@ from unittest.util import _count_diff_hashable
 # This work is licensed under the terms of the MIT license.
 # For a copy, see <https://opensource.org/licenses/MIT>.
 
-"""
-Assignments Solution Author: Engin Bozkurt
-Motion Planning for Self-Driving Cars
-Aug 24, 2019
-"""
-
-"""
-CARLA waypoint follower assessment client script.
-
-A controller assessment to follow a given trajectory, where the trajectory
-can be defined using way-points.
-
-STARTING in a moment...
-"""
-
-
 # System level imports
 import sys
 import os
@@ -100,8 +84,7 @@ PLOT_BOT           = 0.1
 PLOT_WIDTH         = 0.8
 PLOT_HEIGHT        = 0.8
 
-WAYPOINTS_FILENAME = 'course4_waypoints.txt'  # waypoint file to load
-#WAYPOINTS_FILENAME = 'town01-waypoints.txt'
+WAYPOINTS_FILENAME = 'waypoints.txt'  # waypoint file to load
 DIST_THRESHOLD_TO_LAST_WAYPOINT = 2.0  # some distance from last position before
                                        # simulation ends
 
@@ -125,7 +108,7 @@ LP_FREQUENCY_DIVISOR   = 2                # Frequency divisor to make the
                                           # frequency). Must be a natural
                                           # number.
 
-# Course 4 specific parameters
+# Specific parameters
 C4_STOP_SIGN_FILE        = 'stop_sign_params.txt'
 C4_STOP_SIGN_FENCELENGTH = 5        # m
 C4_PARKED_CAR_FILE       = 'parked_vehicle_params.txt'
@@ -218,6 +201,7 @@ class ControlThread(threading.Thread):
         return lidar_field_binary
 
 def make_carla_settings(args):
+    # This section is for in-built CARLA Stereo Camera
     """Make a CarlaSettings object with the settings we need.
     """
     settings = CarlaSettings()
@@ -533,15 +517,12 @@ class CarlaThread(threading.Thread):
                 ct=0
                 for rows in parkedcar_data:
                     ct+=1
-                #for i in range(len(parkedcar_data)):
                 for i in range(ct):
                     parkedcar_data[i][3] = parkedcar_data[i][3] * np.pi / 180.0 
 
             # obtain parked car(s) box points for LP
-            #for i in range(len(parkedcar_data)):
             for i in range(ct):
-                #x = parkedcar_data[i][0]
-                x=parkedcar_data[i][0]
+                x = parkedcar_data[i][0]
                 y = parkedcar_data[i][1]
                 z = parkedcar_data[i][2]
                 yaw = parkedcar_data[i][3]
@@ -812,8 +793,6 @@ class CarlaThread(threading.Thread):
                         parkedcar_data[i][3] = parkedcar_data[i][3] * np.pi / 180.0 
                         # obtain parked car(s) box points for LP
 
-
-
                 # Gather current data from the CARLA server
                 measurement_data, sensor_data = client.read_data()
                 #if sensor_data is not None:
@@ -831,8 +810,8 @@ class CarlaThread(threading.Thread):
                     #cv.imshow("Image", image)
                     try: #get bounding box around object of interest
                         box_max_height, box_min_height, box_max_width, box_min_width = get_object_roi(seg_image, label)
-                        cv.rectangle(image, (box_min_width, box_min_height),(box_max_width,box_max_height), (0,0,0), 2)
-                        cv.imshow("image",image)
+                        #cv.rectangle(image, (box_min_width, box_min_height),(box_max_width,box_max_height), (0,0,0), 2)
+                        #cv.imshow("image",image)
                     except TypeError as e:
                         print("Error calling get_object_roi function: {}".format(e), file = sys.stderr)
                         HasVision = False
@@ -841,7 +820,8 @@ class CarlaThread(threading.Thread):
                         try: #get ceterpoint of ROI, draw crosshair, get distance from centerpoint to camera
                             average_width = int((box_max_width + box_min_width) / 2)
                             average_height = int((box_max_height + box_min_height) / 2)
-                            
+
+                            # This commented lines are for plotting depth image
                             #cv.line(image, (average_width - 10,average_height) , (average_width + 10,average_height), (0,255,0), 1)
                             #cv.line(image, (average_width,average_height - 10) , (average_width,average_height + 10), (0,255,0), 1)
                             #cv.imshow("image", seg_image)
@@ -861,15 +841,12 @@ class CarlaThread(threading.Thread):
                     get_current_pose(measurement_data)
                 current_speed = measurement_data.player_measurements.forward_speed
                 current_timestamp = float(measurement_data.game_timestamp) / 1000.0
-                    
-                #for i in range(len(parkedcar_data)):
                 
                 # Update Static Obstacle through Caemra, if distance/speed<3s, record 
                 # Also need to check if hte obstacle is static or dynamic 
-                #if distance/current_speed < 3 and parkedcar_data[-1][0]-parkedcar_data[-2][0]<1 and parkedcar_data[-1][0]-parkedcar_data[-2][0]>-1:
+                # 0.3 needs to be adjusted for real car implementation
                 if parkedcar_data[-1][0]-parkedcar_data[-2][0]<0.3 and parkedcar_data[-1][0]-parkedcar_data[-2][0]>-0.3:
                     print("Distance to object is: {}m".format(distance))
-                    #dir_path ='C:\\Users\\User\\Desktop\\CarlaSimulator\\PythonClient\\MotionPlannerCourse4FinalProject'
                     dir_path = 'D:\ADP\github\AutoMetaX-ADP\sensor_testing'
                     os.chdir(dir_path)
                     with open('parked_vehicle_params.txt', 'a', newline='') as f_object:
@@ -880,7 +857,7 @@ class CarlaThread(threading.Thread):
                             writer_object.writerow([x_pos,'128.9','38.1','180','2.5','0.9708','0.789'])
                     f_object.close()
                 for i in range(ct):
-                    x = parkedcar_data[i][0] #parkedcar_data[i][0]
+                    x = parkedcar_data[i][0]
                     #print("X value is: {}" .format(current_x - distance))
                     y = parkedcar_data[i][1]
                     z = parkedcar_data[i][2]
@@ -900,7 +877,6 @@ class CarlaThread(threading.Thread):
                     cpos = np.add(np.matmul(rotyaw, cpos), cpos_shift)
                     for j in range(cpos.shape[1]):
                         parkedcar_box_pts.append([cpos[0,j], cpos[1,j]])
-
 
                 # Wait for some initial time before starting the demo
                 if current_timestamp <= WAIT_TIME_BEFORE_START:
@@ -929,16 +905,13 @@ class CarlaThread(threading.Thread):
                 ###
                 # Local Planner Update:
                 #   This will use the behavioural_planner.py and local_planner.py
-                #   implementations that the learner will be tasked with in
-                #   the Course 4 final project
                 ###
                 # Obtain Lead Vehicle information.
                 lead_car_pos    = []
                 lead_car_length = []
                 lead_car_speed  = []
                 lead_car_velocity=[]
-            
-                    
+
                 # Execute the behaviour and local planning in the current instance
                 # Note that updating the local path during every controller update
                 # produces issues with the tracking performance (imagine everytime
@@ -948,20 +921,6 @@ class CarlaThread(threading.Thread):
                 # to be operating at a frequency that is a division to the 
                 # simulation frequency.
                 if frame % LP_FREQUENCY_DIVISOR == 0:
-                    # TODO Once you have completed the prerequisite functions of each of these
-                    # lines, you can uncomment the code below the dashed line to run the planner. 
-                    # Note that functions lower in this block often require outputs from the functions
-                    # earlier in this block, so it may be easier to implement those first to
-                    # get a more intuitive flow of the planner.
-                    # In addition, some of these functions have already been implemented for you,
-                    # but it is useful for you to understand what each function is doing.
-                    # Before you uncomment a function, please take the time to take a look at
-                    # it and understand what is going on. It will also help inform you on the
-                    # flow of the planner, which in turn will help you implement the functions
-                    # flagged for you in the TODO's.
-
-                    # TODO: Uncomment each code block between the dashed lines to run the planner.
-                    # --------------------------------------------------------------
                     # Compute open loop speed estimate.
                     open_loop_speed = lp._velocity_planner.get_open_loop_speed(current_timestamp - prev_timestamp)
 
@@ -973,11 +932,7 @@ class CarlaThread(threading.Thread):
                     bp.set_lookahead(BP_LOOKAHEAD_BASE + BP_LOOKAHEAD_TIME * open_loop_speed)
                     look_ahead_dist = BP_LOOKAHEAD_BASE + BP_LOOKAHEAD_TIME * open_loop_speed
 
-                    #if parkedcar_data[-1][0]-parkedcar_data[-2][0]>2 or parkedcar_data[-1][0]-parkedcar_data[-2][0]<-2:
-                        #print("Distance to object is: {}m".format(temp-distance))
-                            #print("leading vehicle speed: {}m/s".format(open_loop_speed-(temp-distance)/(current_timestamp - prev_timestamp)))
-                            #lead_car_velocity= open_loop_speed-(temp-distance)/(current_timestamp - prev_timestamp) 
-                    
+
                     if distance-10<look_ahead_dist and HasVision:
                     #if HasVision:
                                 for i in range(12):
@@ -1000,44 +955,7 @@ class CarlaThread(threading.Thread):
                                 lead_car_pos.append([0,0])
                                 lead_car_length.append(2.5)
                                 lead_car_speed.append(0.01)
-                                
-                    #print(current_x-distance)
-                    #print(lead_car_pos[0])
-                    #print(ego_state[0])
-                    #if lead_car_pos[0][0]>ego_state[0]:
-                        #lead_car_pos=[]
-                        #for i in range(10):
-                                    #lead_car_velocity=open_loop_speed-(temp-distance)/(current_timestamp - prev_timestamp)
-                                    #temp=distance 
-                                    #lead_car_pos.append([current_x-distance-2,129.5])
-                                    #lead_car_length.append(2.5)
-                                    #lead_car_speed.append(lead_car_velocity)
-                        #print(lead_car_pos)
 
-
-                    #else:
-                    """
-                    for agent in measurement_data.non_player_agents:
-                            agent_id = agent.id
-                            lead_car_velocity=0
-                            if agent.HasField('vehicle'):
-                                    lead_car_pos.append(
-                                    [0,0])
-                                    lead_car_length.append(2.5)
-                                    lead_car_speed.append(0.01)
-                    """                
-                    """
-                    else:
-                                for agent in measurement_data.non_player_agents:
-                                    agent_id = agent.id
-                                    if agent.HasField('vehicle'):
-                                        lead_car_pos.append(
-                                        [agent.vehicle.transform.location.x,
-                                        agent.vehicle.transform.location.y])
-                                        lead_car_length.append(agent.vehicle.bounding_box.extent.x)
-                                        lead_car_speed.append(agent.vehicle.forward_speed)
-                    """
-                            
                     # Perform a state transition in the behavioural planner.
                     bp.transition_state(waypoints, ego_state, current_speed)
 
@@ -1061,8 +979,7 @@ class CarlaThread(threading.Thread):
                     for i in range(210,330):
                         if detection_array[1,i] == 1:
                             count = count + 1
-                    
-                    
+
                     if lead_car_pos[1][0] != 0:
                         if count < 30: 
                             Follow_state = False
@@ -1071,7 +988,7 @@ class CarlaThread(threading.Thread):
                             goal_index = bp.get_goal_index(waypoints, ego_state, closest_len, closest_index)
                             goal_state = waypoints[goal_index+1]
                             goal_state[2] = goal_state[2]*1.3
-                            #print(waypoints)
+
                         else:
                             Follow_state = True
                             print("Follow state = True")
@@ -1088,7 +1005,6 @@ class CarlaThread(threading.Thread):
                     #else:
                     #    Follow_state == False
                     if  Follow_state == False and lead_car_pos[0][0] < ego_state[0]:
-                       # dir_path ='C:\\Users\\User\\Desktop\\CarlaSimulator\\PythonClient\\MotionPlannerCourse4FinalProject'
                         dir_path ='D:\ADP\github\AutoMetaX-ADP\sensor_testing'
                         os.chdir(dir_path)
                         with open('parked_vehicle_params.txt', 'a', newline='') as f_object:
@@ -1099,10 +1015,8 @@ class CarlaThread(threading.Thread):
                             
                             writer_object.writerow([x_pos,'128.9','38.1','180','2.5','0.9708','0.789'])
                         f_object.close()
-                    #elif lead_car_pos[1][0] > ego_state[0]:
-                    #    Follow_state = True
+
                     # Compute the goal state set from the behavioural planner's computed goal state.
-                    #goal_state_set = lp.get_goal_state_set(bp._goal_index, bp._goal_state, waypoints, ego_state)
                     goal_state_set = lp.get_goal_state_set(goal_index, goal_state, waypoints, ego_state)
                     
                     # Calculate planned paths in the local frame.
@@ -1138,8 +1052,7 @@ class CarlaThread(threading.Thread):
 
                     if local_waypoints != None:
                         # Update the controller waypoint path with the best local path.
-                        # This controller is similar to that developed in Course 1 of this
-                        # specialization.  Linear interpolation computation on the waypoints
+                        # Linear interpolation computation on the waypoints
                         # is also used to ensure a fine resolution between points.
                         wp_distance = []   # distance array
                         local_waypoints_np = np.array(local_waypoints)
@@ -1249,7 +1162,7 @@ class CarlaThread(threading.Thread):
                         lp_1d.refresh()
                         live_plot_timer.lap()
                 # Add episode number to track 
-                #check_episode=check_episode+1
+                # check_episode=check_episode+1
                 # Output controller command to CARLA server
                 send_control_command(client,
                                     throttle=cmd_throttle,
@@ -1342,7 +1255,7 @@ def main():
     # Execute when server connection is established
     while True:
         try:
-            lidar = LidarThread()
+            lidar = LidarThread()ㄹ
             lidar.start()
 
             # # Start the control thread

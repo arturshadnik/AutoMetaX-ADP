@@ -3,42 +3,14 @@ import cv2 # Import the OpenCV library to enable computer vision
 import numpy as np # Import the NumPy scientific computing library
 import edge_detection as edge # Handles the detection of lane lines
 import matplotlib.pyplot as plt # Used for plotting and error checking
-import pyzed.sl as sl
+import math 
 
 # Author: Addison Sears-Collins
 # https://automaticaddison.com
 # Description: Implementation of the Lane class 
  
 filename = 'original_lane_detection_5.jpg'
-
-def initialize_camera():
-    zed = sl.Camera()
-    
-    init_params = sl.InitParameters()
-    init_params.sdk_verbose = True
-    init_params.camera_fps=15
-    init_params.camera_resolution = sl.RESOLUTION.HD720
-    init_params.depth_mode = sl.DEPTH_MODE.PERFORMANCE
-    init_params.coordinate_units = sl.UNIT.MILLIMETER
-    
-    err = zed.open(init_params)
-    if err != sl.ERROR_CODE.SUCCESS:
-        print("Error {}, exiting program".format(err))
-        exit()
-        
-    return zed    
-
-def capture_image(zed):    
-    image = sl.Mat()
-
-
-    runtime_parameters = sl.RuntimeParameters()
-    
-    if zed.grab(runtime_parameters) == sl.ERROR_CODE.SUCCESS:
-        zed.retrieve_image(image, sl.VIEW.LEFT)
-
-        
-    return image
+ 
 class Lane:
   """
   Represents a lane on a road.
@@ -61,14 +33,15 @@ class Lane:
  
     # (Width, Height) of the original video frame (or image)
     self.orig_image_size = self.orig_frame.shape[::-1][1:]
- 
+    print(str(self.orig_image_size) + 'cm')
     width = self.orig_image_size[0]
     height = self.orig_image_size[1]
     self.width = width
     self.height = height
      
     # Four corners of the trapezoid-shaped region of interest
-    # You need to find these corners manually.
+    # You need to find these corners manually. 分成四部分 注意这里是不是有问题
+
     self.roi_points = np.float32([
       (274,184), # Top-left corner
       (0, 337), # Bottom-left corner            
@@ -79,15 +52,15 @@ class Lane:
     # The desired corner locations  of the region of interest
     # after we perform perspective transformation.
     # Assume image width of 600, padding == 150.
-    self.padding = int(0.25 * width) # padding from side of the image in pixels
+    self.padding = int(0.25 * width) # padding from side of the image in pixels取景框
     self.desired_roi_points = np.float32([
       [self.padding, 0], # Top-left corner
-      [self.padding, self.orig_image_size[1]], # Bottom-left corner         
+      [self.padding, self.orig_image_size[1]], # Bottom-left corner高度         
       [self.orig_image_size[
-        0]-self.padding, self.orig_image_size[1]], # Bottom-right corner
-      [self.orig_image_size[0]-self.padding, 0] # Top-right corner
+        0]-self.padding, self.orig_image_size[1]], # Bottom-right corner高度
+      [self.orig_image_size[0]-self.padding, 0] # Top-right corner宽度
     ]) 
-         
+    print()     
     # Histogram that shows the white pixel peaks for lane line detection
     self.histogram = None
          
@@ -111,13 +84,61 @@ class Lane:
          
     # Pixel parameters for x and y dimensions
     self.YM_PER_PIX = 10.0 / 1000 # meters per pixel in y dimension
-    self.XM_PER_PIX = 3.7 / 781 # meters per pixel in x dimension
+    self.XM_PER_PIX = 3.7 / 781 # meters per pixel in x dimension通过相机位置计算出的距离数 通过实测修改
          
     # Radii of curvature and offset
     self.left_curvem = None
     self.right_curvem = None
     self.center_offset = None
+    self.curr_steering_angle = 0
+    # streen angle :
+  def compute_steering_angle( self, left_curvem , right_curvem):
+    """ Find the steering angle based on lane line coordinate
+        We assume that camera is calibrated to point to dead center
+    """
  
+    left_x2 = left_curvem
+    right_x2= right_curvem
+    
+    camera_mid_offset_percent = 0.02 # 0.0 means car pointing to center, -0.03: car is centered to left, +0.03 means car pointing to right
+
+    mid = int(self.width / 2 * (1 + camera_mid_offset_percent))
+    x_offset = (left_x2 + right_x2) / 2 - mid
+
+    # find the steering angle, which is angle between navigation direction to end of center line
+    y_offset = int(self.height / 2)
+
+    angle_to_mid_radian = math.atan(x_offset / y_offset)  # angle (in radian) to center vertical line
+    angle_to_mid_deg = int(angle_to_mid_radian * 180.0 / math.pi)  # angle (in degrees) to center vertical line
+    steering_angle = angle_to_mid_deg + 90  # this is the steering angle needed by picar front wheel
+
+    return steering_angle
+  def stabilize_steering_angle(self, curr_steering_angle, new_steering_angle, num_of_lane_lines, max_angle_deviation_two_lines=5, max_angle_deviation_one_lane=1):
+    """
+    Using last steering angle to stabilize the steering angle
+    This can be improved to use last N angles, etc
+    if new angle is too different from current angle, only turn by max_angle_deviation degrees
+    """
+
+    # if both lane lines detected, then we can deviate more
+    max_angle_deviation = max_angle_deviation_two_lines
+    angle_deviation = new_steering_angle - curr_steering_angle
+    if abs(angle_deviation) > max_angle_deviation:
+        stabilized_steering_angle = int(curr_steering_angle
+                                        + max_angle_deviation * angle_deviation / abs(angle_deviation))
+    else:
+        stabilized_steering_angle = new_steering_angle
+    
+    return stabilized_steering_angle
+  def steer_angle(self, left_curvem,right_curvem ):
+    left = left_curvem
+    right = right_curvem
+    new_steering_angle = self.compute_steering_angle(left, right)
+    
+    self.curr_steering_angle = self.stabilize_steering_angle(self.curr_steering_angle, new_steering_angle, 2)
+    curr_steering_angle = self.curr_steering_angle
+
+    return curr_steering_angle
   def calculate_car_position(self, print_to_terminal=False):
     """
     Calculate the position of the car relative to the center
@@ -144,8 +165,9 @@ class Lane:
       print(str(center_offset) + 'cm')
              
     self.center_offset = center_offset
-       
-    return center_offset
+    curr_steering_angle = self.steer_angle( bottom_left , bottom_right )
+    self.curr_steering_angle = curr_steering_angle       
+    return center_offset,curr_steering_angle
  
   def calculate_curvature(self, print_to_terminal=False):
     """
@@ -172,13 +194,15 @@ class Lane:
                     1])**2)**1.5) / np.absolute(2*right_fit_cr[0])
      
     # Display on terminal window
-    if print_to_terminal == True:
-      print(left_curvem, 'm', right_curvem, 'm')
+    #if print_to_terminal == True:
+    print(left_curvem, 'm left curvem', right_curvem, 'm right curvem')
              
     self.left_curvem = left_curvem
+
     self.right_curvem = right_curvem
- 
-    return left_curvem, right_curvem        
+
+
+    return left_curvem, right_curvem       
          
   def calculate_histogram(self,frame=None,plot=True):
     """
@@ -226,13 +250,24 @@ class Lane:
       20/338)*self.height)), cv2.FONT_HERSHEY_SIMPLEX, (float((
       0.5/600)*self.width)),(
       255,255,255),2,cv2.LINE_AA)
+    cv2.putText(image_copy,'steering Angle: '+str(math.asin(2.3/(
+      self.left_curvem+self.right_curvem)))[:7]+' rad ', (int((
+      5/600)*self.width), int((
+      60/338)*self.height)), cv2.FONT_HERSHEY_SIMPLEX, (float((
+      0.5/600)*self.width)),(
+      255,255,255),2,cv2.LINE_AA)     
     cv2.putText(image_copy,'Center Offset: '+str(
       self.center_offset)[:7]+' cm', (int((
       5/600)*self.width), int((
       40/338)*self.height)), cv2.FONT_HERSHEY_SIMPLEX, (float((
       0.5/600)*self.width)),(
       255,255,255),2,cv2.LINE_AA)
-             
+    cv2.putText(image_copy,'Next Step Steering Angle: '+str(
+      self.curr_steering_angle)[:7]+' deg', (int((
+      5/600)*self.width), int((
+      80/338)*self.height)), cv2.FONT_HERSHEY_SIMPLEX, (float((
+      0.5/600)*self.width)),(
+      255,255,255),2,cv2.LINE_AA)         
     if plot==True:       
       cv2.imshow("Image with Curvature and Offset", image_copy)
  
@@ -341,7 +376,7 @@ class Lane:
     """
     Get the indices of the lane line pixels using the 
     sliding windows technique.
-         
+     滑动窗口探测线条     
     :param: plot Show plot or not
     :return: Best fit lines for the left and right lines of the current lane 
     """
@@ -416,7 +451,7 @@ class Lane:
     righty = nonzeroy[right_lane_inds]
  
     # Fit a second order polynomial curve to the pixel coordinates for
-    # the left and right lane lines
+    # the left and right lane lines这里加tryfunction
     left_fit = np.polyfit(lefty, leftx, 2)
     right_fit = np.polyfit(righty, rightx, 2) 
          
@@ -456,6 +491,27 @@ class Lane:
       plt.show()        
              
     return self.left_fit, self.right_fit
+  
+  def plot_roi(self, image):
+    """
+    Plot the region of interest on an image.
+    :param: frame The current image frame
+    :param: plot Plot the roi image if True
+    """
+    height = self.height
+    width = self.width
+    # Defining Triangular ROI: The values will change as per your camera mounts
+
+    triangle = np.array([[(0, height), (width, height), (width-int(width/2), int(0))]])
+    # creating black image same as that of input image
+    black_image = np.zeros_like(image)
+    # Put the Triangular shape on top of our Black image to create a mask
+    mask = cv2.fillPoly(black_image, triangle, color =(255,255,255))
+    cv2.imshow('mask', mask)
+    # applying mask on original image
+    masked_image = cv2.bitwise_and(image, mask)
+    return masked_image 
+      
  
   def get_line_markings(self, frame=None):
     """
@@ -478,12 +534,12 @@ class Lane:
     # along the x and y axis of the video frame.             
     # sxbinary is a matrix full of 0s (black) and 255 (white) intensity values
     # Relatively light pixels get made white. Dark pixels get made black.
-    _, sxbinary = edge.threshold(hls[:, :, 1], thresh=(120, 255))
+    _, sxbinary = edge.threshold(hls[:, :, 1], thresh=(150, 255))
     sxbinary = edge.blur_gaussian(sxbinary, ksize=3) # Reduce noise
          
     # 1s will be in the cells with the highest Sobel derivative values
     # (i.e. strongest lane line edges)
-    sxbinary = edge.mag_thresh(sxbinary, sobel_kernel=3, thresh=(110, 255))
+    sxbinary = edge.mag_thresh(sxbinary, sobel_kernel=3, thresh=(150, 255))
  
     ######################## Isolate possible lane lines ######################
    
@@ -495,16 +551,16 @@ class Lane:
     # White in the regions with the purest hue colors (e.g. >80...play with
     # this value for best results).
     s_channel = hls[:, :, 2] # use only the saturation channel data
-    _, s_binary = edge.threshold(s_channel, (5, 255))
-    #_, s_binary = edge.threshold(s_channel, (80, 255)) 
+    _, s_binary = edge.threshold(s_channel, (20, 255))
+#    _, s_binary = edge.threshold(s_channel, (80, 255))    
     # Perform binary thresholding on the R (red) channel of the 
         # original BGR video frame. 
     # r_thresh is a matrix full of 0s (black) and 255 (white) intensity values
     # White in the regions with the richest red channel values (e.g. >120).
     # Remember, pure white is bgr(255, 255, 255).
     # Pure yellow is bgr(0, 255, 255). Both have high red channel values.
-    _, r_thresh = edge.threshold(frame[:, :, 2], thresh=(120, 255))
-
+    _, r_thresh = edge.threshold(frame[:, :, 2], thresh=(150, 255))
+ 
     # Lane lines should be pure in color and have high red channel values 
     # Bitwise AND operation to reduce noise and black-out any pixels that
     # don't appear to be nice, pure, solid colors (like white or yellow lane 
@@ -514,8 +570,10 @@ class Lane:
     ### Combine the possible lane lines with the possible lane line edges ##### 
     # If you show rs_binary visually, you'll see that it is not that different 
     # from this return value. The edges of lane lines are thin lines of pixels.
+    #展示lane marking 就是 2b 图像 。
     self.lane_line_markings = cv2.bitwise_or(rs_binary, sxbinary.astype(
-                              np.uint8))    
+                              np.uint8))   
+    self.lane_line_markings= self.plot_roi(self.lane_line_markings)                          
     return self.lane_line_markings
          
   def histogram_peak(self):
@@ -548,7 +606,7 @@ class Lane:
     pts_right = np.array([np.flipud(np.transpose(np.vstack([
                           self.right_fitx, self.ploty])))])
     pts = np.hstack((pts_left, pts_right))
-    print("frame:{}".format( pts_right))     
+         
     # Draw lane on the warped blank image
     cv2.fillPoly(color_warp, np.int_([pts]), (0,255, 0))
  
@@ -561,21 +619,19 @@ class Lane:
     # Combine the result with the original image
     result = cv2.addWeighted(self.orig_frame, 1, newwarp, 0.3, 0)
          
-    if plot==True:
-      
-      # Plot the figures 
-      figure, (ax1, ax2) = plt.subplots(2,1) # 2 rows, 1 column
-      figure.set_size_inches(10, 10)
-      figure.tight_layout(pad=3.0)
-      ax1.imshow(cv2.cvtColor(self.orig_frame, cv2.COLOR_BGR2RGB))
-      ax2.imshow(cv2.cvtColor(result, cv2.COLOR_BGR2RGB))
-      ax1.set_title("Original Frame")  
-      ax2.set_title("Original Frame With Lane Overlay")
-      plt.show()   
+
+    figure, (ax1, ax2) = plt.subplots(2,1) # 2 rows, 1 column
+    figure.set_size_inches(10, 10)
+    figure.tight_layout(pad=3.0)
+    ax1.imshow(cv2.cvtColor(self.orig_frame, cv2.COLOR_BGR2RGB))
+    ax2.imshow(cv2.cvtColor(result, cv2.COLOR_BGR2RGB))
+    ax1.set_title("Original Frame")  
+    ax2.set_title("Original Frame With Lane Overlay")
+    plt.show()   
  
     return result           
      
-  def perspective_transform(self, frame=None, plot=False):
+  def perspective_transform(self, frame=None, plot=True):
     """
     Perform the perspective transform.
     :param: frame Current frame
@@ -584,7 +640,7 @@ class Lane:
     """
     if frame is None:
       frame = self.lane_line_markings
-             
+    cv2.imshow("marking", self.lane_line_markings)          
     # Calculate the transformation matrix
     self.transformation_matrix = cv2.getPerspectiveTransform(
       self.roi_points, self.desired_roi_points)
@@ -593,123 +649,98 @@ class Lane:
     self.inv_transformation_matrix = cv2.getPerspectiveTransform(
       self.desired_roi_points, self.roi_points)
  
-    # Perform the transform using the transformation matrix
+    # Perform the transform using the transformation matrix 这里有点奇怪
     self.warped_frame = cv2.warpPerspective(
       frame, self.transformation_matrix, self.orig_image_size, flags=(
      cv2.INTER_LINEAR)) 
- 
+    cv2.imshow('wraped frame',self.warped_frame)
     # Convert image to binary
     (thresh, binary_warped) = cv2.threshold(
-      self.warped_frame, 127, 255, cv2.THRESH_BINARY)           
+      self.warped_frame, 80, 255, cv2.THRESH_BINARY)           
     self.warped_frame = binary_warped
  
     # Display the perspective transformed (i.e. warped) frame
-    if plot == True:
-      warped_copy = self.warped_frame.copy()
-      warped_plot = cv2.polylines(warped_copy, np.int32([
-                    self.desired_roi_points]), True, (147,20,255), 3)
+    
+    warped_copy = self.warped_frame.copy()
+    warped_plot = cv2.polylines(warped_copy, np.int32([
+                    self.desired_roi_points]), True, (23,214,96), 3)
  
-      # Display the image
-      while(1):
-        cv2.imshow('Warped Image', warped_plot)
+      # Display the image 在图上画四边形 上面数字框架颜色 不重要
+      
+    cv2.imshow('Warped Image test rectangular', warped_plot)
              
         # Press any key to stop
-        if cv2.waitKey(0):
-          break
+    
  
-      cv2.destroyAllWindows()   
+  
              
     return self.warped_frame        
      
-  def plot_roi(self, frame=None, plot=False):
-    """
-    Plot the region of interest on an image.
-    :param: frame The current image frame
-    :param: plot Plot the roi image if True
-    """
-    if plot == False:
-      return
-             
-    if frame is None:
-      frame = self.orig_frame.copy()
+
  
-    # Overlay trapezoid on the frame
-    this_image = cv2.polylines(frame, np.int32([
-      self.roi_points]), True, (147,20,255), 3)
- 
-    # Display the image
-    while(1):
-      cv2.imshow('ROI Image', this_image)
-             
-      # Press any key to stop
-      if cv2.waitKey(0):
-        break
- 
-    cv2.destroyAllWindows()
-     
+   
 def main():
-  zed=initialize_camera()
-  while True:
-    image=capture_image(zed)
-    original_frame=image.get_data() 
-    original_frame=cv2.cvtColor(original_frame,cv2.COLOR_RGBA2RGB)   
-    # Load a frame (or image)
-    #original_frame = cv2.imread("test001.jpg")
-    
-    # Create a Lane object
-    lane_obj = Lane(orig_frame=original_frame)
+     
+  # Load a frame (or image)
+  original_frame = cv2.imread("Test1.jpeg")
+
   
-    # Perform thresholding to isolate lane lines
-    lane_line_markings = lane_obj.get_line_markings()
+
+  # Create a Lane object
+  lane_obj = Lane(orig_frame=original_frame)
+ # lane_obj = Lane(orig_frame=cropped)
+  original_frame= lane_obj.plot_roi (original_frame) 
+  # Perform thresholding to isolate lane lines
+  lane_line_markings = lane_obj.get_line_markings()
+ 
+  # Plot the region of interest on the image
+  #lane_obj.plot_roi(plot=False)
   
-    # Plot the region of interest on the image
-    lane_obj.plot_roi(plot=False)
+ 
+  # Perform the perspective transform to generate a bird's eye view
+  # If Plot == True, show image with new region of interest
+  warped_frame = lane_obj.perspective_transform(plot=False)
+ 
+  # Generate the image histogram to serve as a starting point
+  # for finding lane line pixels
+  histogram = lane_obj.calculate_histogram(plot=False)  
+     
+  # Find lane line pixels using the sliding window method 
+  left_fit, right_fit = lane_obj.get_lane_line_indices_sliding_windows(
+    plot=False)
+ 
+  # Fill in the lane line
+  lane_obj.get_lane_line_previous_window(left_fit, right_fit, plot=False)
+     
+  # Overlay lines on the original frame
+  frame_with_lane_lines = lane_obj.overlay_lane_lines(plot=False)
+ 
+  # Calculate lane line curvature (left and right lane lines)
+  lane_obj.calculate_curvature(print_to_terminal=False)
+ 
+  # Calculate center offset                                                                 
+  lane_obj.calculate_car_position(print_to_terminal=False)
+     
+  # Display curvature and center offset on image
   
-    # Perform the perspective transform to generate a bird's eye view
-    # If Plot == True, show image with new region of interest
-    warped_frame = lane_obj.perspective_transform(plot=False)
-  
-    # Generate the image histogram to serve as a starting point
-    # for finding lane line pixels
-    histogram = lane_obj.calculate_histogram(plot=False)  
-      
-    # Find lane line pixels using the sliding window method 
-    left_fit, right_fit = lane_obj.get_lane_line_indices_sliding_windows(
-      plot=False)
-  
-    # Fill in the lane line
-    lane_obj.get_lane_line_previous_window(left_fit, right_fit, plot=False)
-      
-    # Overlay lines on the original frame
-    frame_with_lane_lines = lane_obj.overlay_lane_lines(plot=False)
-  
-    # Calculate lane line curvature (left and right lane lines)
-    lane_obj.calculate_curvature(print_to_terminal=False)
-  
-    # Calculate center offset                                                                 
-    lane_obj.calculate_car_position(print_to_terminal=False)
-      
-    # Display curvature and center offset on image
-    frame_with_lane_lines2 = lane_obj.display_curvature_offset(
-      frame=frame_with_lane_lines, plot=True)
-      
-    # Create the output file name by removing the '.jpg' part
-    size = len(filename)
-    new_filename = filename[:size - 4]
-    new_filename = new_filename + '_thresholded.jpg'     
-      
-    # Save the new image in the working directory
-    #cv2.imwrite(new_filename, lane_line_markings)
-  
-    # Display the image 
-    #cv2.imshow("Image", lane_line_markings) 
-      
-    # Display the window until any key is pressed
-    cv2.waitKey(10) 
-      
-    # Close all windows
-  
+  frame_with_lane_lines2 = lane_obj.display_curvature_offset(
+    frame=frame_with_lane_lines, plot=True)
+     
+  # Create the output file name by removing the '.jpg' part
+  size = len(filename)
+  new_filename = filename[:size - 4]
+  new_filename = new_filename + '_thresholded.jpg'     
+     
+  # Save the new image in the working directory
+  #cv2.imwrite(new_filename, lane_line_markings)
+ 
+  # Display the image 
+  cv2.imshow("Image", lane_line_markings) 
+     
+  # Display the window until any key is pressed
+  cv2.waitKey(0) 
+     
+  # Close all windows
   cv2.destroyAllWindows() 
-  zed.close()
      
 main()

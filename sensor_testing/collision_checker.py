@@ -3,16 +3,6 @@
 # This work is licensed under the terms of the MIT license.
 # For a copy, see <https://opensource.org/licenses/MIT>.
 
-"""
-Assignments Solution Author: Engin Bozkurt
-Motion Planning for Self-Driving Cars
-Aug 24, 2019
-"""
-
-# Author: Ryan De Iaco
-# Additional Comments: Carlos Wang
-# Date: October 29, 2018
-
 import numpy as np
 import scipy.spatial
 from math import sin, cos, pi, sqrt
@@ -23,14 +13,6 @@ class CollisionChecker:
         self._circle_radii   = circle_radii
         self._weight         = weight
 
-    ######################################################
-    ######################################################
-    # MODULE 7: CHECKING FOR COLLISSIONS
-    #   Read over the function comments to familiarize yourself with the
-    #   arguments and necessary variables to return. Then follow the TODOs
-    #   (top-down) and use the surrounding comments as a guide.
-    ######################################################
-    ######################################################
     # Takes in a set of paths and obstacles, and returns an array
     # of bools that says whether or not each path is collision free.
     def collision_check(self, paths, obstacles):
@@ -85,15 +67,9 @@ class CollisionChecker:
                 # point_x is given by path[0][j], and point _y is given by
                 # path[1][j]. 
                 circle_locations = np.zeros((len(self._circle_offsets), 2))
-
-                # TODO: INSERT YOUR CODE BETWEEN THE DASHED LINES
-                # --------------------------------------------------------------
-                # circle_locations[:, 0] = ... 
-                # circle_locations[:, 1] = ...
                 circle_offset = np.array(self._circle_offsets)
                 circle_locations[:, 0] = path[0][j] + circle_offset * cos(path[2][j])
                 circle_locations[:, 1] = path[1][j] + circle_offset * sin(path[2][j])
-                # --------------------------------------------------------------
 
                 # Assumes each obstacle is approximated by a collection of
                 # points of the form [x, y].
@@ -119,14 +95,6 @@ class CollisionChecker:
 
         return collision_check_array
 
-    ######################################################
-    ######################################################
-    # MODULE 7: SELECTING THE BEST PATH INDEX
-    #   Read over the function comments to familiarize yourself with the
-    #   arguments and necessary variables to return. Then follow the TODOs
-    #   (top-down) and use the surrounding comments as a guide.
-    ######################################################
-    ######################################################
     # Selects the best path in the path set, according to how closely
     # it follows the lane centerline, and how far away it is from other
     # paths that are in collision. 
@@ -171,12 +139,7 @@ class CollisionChecker:
                 # The centerline goal is given by goal_state.
                 # The exact choice of objective function is up to you.
                 # A lower score implies a more suitable path.
-                # TODO: INSERT YOUR CODE BETWEEN THE DASHED LINES
-                # --------------------------------------------------------------
-                # score = ...
                 score = np.sqrt((paths[i][0][-1]-goal_state[0])**2+(paths[i][1][-1]-goal_state[1])**2)
-                # --------------------------------------------------------------
-
                 # Compute the "proximity to other colliding paths" score and
                 # add it to the "distance from centerline" score.
                 # The exact choice of objective function is up to you.
@@ -185,12 +148,7 @@ class CollisionChecker:
                         continue
                     else:
                         if not collision_check_array[j]:
-                            # TODO: INSERT YOUR CODE BETWEEN THE DASHED LINES
-                            # --------------------------------------------------
-                            # score += self._weight * ...
-                            # score += self._weight * np.sqrt((paths[i][0][-1]-paths[j][0][-1])**2+(paths[i][1][-1]-paths[j][1][-1])**2) * -1
-                            # --------------------------------------------------
-                            
+
                             pass
 
             # Handle the case of colliding paths.
